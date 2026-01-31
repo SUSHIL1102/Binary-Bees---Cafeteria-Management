@@ -9,7 +9,6 @@ function App() {
     const token = params.get("token");
     const userParam = params.get("user");
 
-    // 🔥 THIS IS THE MISSING PART
     if (token && userParam) {
       localStorage.setItem("token", token);
 
