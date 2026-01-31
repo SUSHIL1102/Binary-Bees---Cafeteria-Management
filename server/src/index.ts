@@ -1,0 +1,48 @@
+import "dotenv/config";
+import express from "express";
+import cors from "cors";
+import { authRouter } from "./routes/auth.js";
+import { reservationRouter } from "./routes/reservations.js";
+import { availabilityRouter } from "./routes/availability.js";
+import { employeeRouter } from "./routes/employees.js";
+import swaggerUi from "swagger-ui-express";
+import { swaggerSpec } from "./config/swagger.js";
+
+const app = express();
+const PORT = process.env.PORT ?? 3001;
+
+app.use(cors({ origin: true, credentials: true }));
+app.use(express.json());
+
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.use("/api/auth", authRouter);
+app.use("/api/reservations", reservationRouter);
+app.use("/api/availability", availabilityRouter);
+app.use("/api/employees", employeeRouter);
+
+app.get("/", (_req, res) => {
+  res.json({
+    service: "Cafeteria Seat Reservation API",
+    docs: "/api-docs",
+    health: "/health",
+    api: {
+      auth: "/api/auth",
+      reservations: "/api/reservations",
+      availability: "/api/availability",
+      employees: "/api/employees",
+    },
+  });
+});
+
+app.get("/health", (_req, res) => {
+  res.json({ status: "ok", service: "cafeteria-seat-reservation" });
+});
+
+if (process.env.NODE_ENV !== "test") {
+  app.listen(PORT, () => {
+    console.log(`Server running at http://localhost:${PORT}`);
+    console.log(`Swagger UI: http://localhost:${PORT}/api-docs`);
+  });
+}
+
+export default app;
