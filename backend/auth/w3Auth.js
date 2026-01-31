@@ -66,11 +66,21 @@ async function callback(req, res) {
     );
 
     // ✅ Return only app token
-    res.json({
-      message: "Login successful",
-      token: appToken,
-      user
-    });
+    // res.json({
+    //   message: "Login successful",
+    //   token: appToken,
+    //   user
+    // });
+
+    // console.log("Callback reached, redirecting to frontend");
+    // res.redirect("http://localhost:3000");
+
+    res.redirect(
+  `http://localhost:3000?token=${appToken}&user=${encodeURIComponent(
+    JSON.stringify(user)
+  )}`
+);
+
 
   } catch (err) {
     console.error(err.response?.data || err.message);
