@@ -19,9 +19,14 @@ A full-stack cafeteria management service: employees log in (w3 SSO / mock for d
 ### 1. Install dependencies
 
 ```bash
+cd cafeteria_seat_reservation
 npm install
-cd server && npm install && cd ..
-cd client && npm install && cd ..
+cd server
+npm install
+cd ..
+cd client
+npm install
+cd ..
 ```
 
 ### 2. Backend: database and env
