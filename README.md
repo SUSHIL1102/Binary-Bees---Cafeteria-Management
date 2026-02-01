@@ -118,13 +118,20 @@ Protected routes use header: `Authorization: Bearer <token>`.
 
 ## w3 SSO (production)
 
-Auth is built so you can plug in **w3 SSO** later:
+**w3 SSO is integrated.** The app supports both mock login (dev) and w3 OIDC:
 
-1. Register/use w3 SSO per [w3 SSO boarding](https://w3.ibm.com/w3publisher/w3idsso/boarding).
-2. Replace the mock login flow with the w3 OAuth/OIDC callback.
-3. On successful w3 login, get w3 user id and profile (email, name), find or create `Employee` by `w3Id`, then issue your JWT as in `authService.mockSsoLogin`.
+- **Mock login:** POST `/api/auth/login` with `email` and `name` (or use “Demo user” on the login page).
+- **w3 SSO:** User clicks “Sign in with w3 SSO” → GET `/api/auth/w3/login` (redirects to w3) → w3 redirects to GET `/api/auth/w3/callback` → app finds/creates `Employee` by `w3Id`, issues JWT, redirects to frontend with token.
 
-Local dev continues to use the mock: POST `/api/auth/login` with `email` and `name`.
+**Setup:**
+
+1. Register your app in [w3 SSO Provisioner](https://w3.ibm.com/w3publisher/w3idsso/boarding) (OIDC, Authorization Code).
+2. In the provisioner, set **Redirect URI** to `http://localhost:3001/api/auth/w3/callback` (must match `W3_REDIRECT_URI` in `.env` exactly).
+3. In `server/.env`, set:
+   - `W3_CLIENT_ID`, `W3_CLIENT_SECRET` (from provisioner)
+   - `W3_AUTH_URL`, `W3_TOKEN_URL` (e.g. preprod: `https://preprod.login.w3.ibm.com/oidc/endpoint/default/authorize` and `.../token`)
+   - `W3_REDIRECT_URI` = same as in provisioner
+   - `CLIENT_URL` = frontend URL (e.g. `http://localhost:5173`) for redirect after login
 
 ## Cloud deployment (later)
 

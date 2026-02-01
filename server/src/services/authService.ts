@@ -13,10 +13,28 @@ export type TokenPayload = { employeeId: string; w3Id: string };
  */
 export async function mockSsoLogin(email: string, name: string): Promise<{ token: string; employee: { id: string; email: string; name: string } }> {
   const w3Id = `mock-w3-${email}`;
+  return w3SsoLogin(w3Id, email, name);
+}
+
+/**
+ * w3 SSO login: find or create Employee by w3Id, return JWT and employee.
+ * Used after OIDC callback when we have w3 user id and profile (email, name).
+ */
+export async function w3SsoLogin(
+  w3Id: string,
+  email: string,
+  name: string
+): Promise<{ token: string; employee: { id: string; email: string; name: string } }> {
   let employee = await prisma.employee.findUnique({ where: { w3Id } });
   if (!employee) {
     employee = await prisma.employee.create({
       data: { w3Id, email, name, location: LOCATION },
+    });
+  } else {
+    // Optionally update email/name if they changed in w3 profile
+    employee = await prisma.employee.update({
+      where: { id: employee.id },
+      data: { email, name },
     });
   }
   const token = jwt.sign(
