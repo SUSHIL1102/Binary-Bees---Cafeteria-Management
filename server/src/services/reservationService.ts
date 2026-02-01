@@ -25,8 +25,8 @@ export async function getReservationCountForDate(date: string): Promise<number> 
  * Check if employee already has a reservation for the date (one per employee per day).
  */
 export async function hasEmployeeReservationForDate(employeeId: string, date: string): Promise<boolean> {
-  const existing = await prisma.reservation.findUnique({
-    where: { employeeId_date: { employeeId, date } },
+  const existing = await prisma.reservation.findFirst({
+    where: { employeeId, date },
   });
   return !!existing;
 }
@@ -65,6 +65,12 @@ export async function createReservation(employeeId: string, date: string): Promi
   const reservation = await prisma.reservation.create({
     data: { employeeId, date, seatNumber: nextSeat },
   });
+
+  if (process.env.NODE_ENV === "development") {
+    console.log("[Reservation created – full document as stored in MongoDB]:");
+    console.log(JSON.stringify(reservation, null, 2));
+  }
+
   return {
     success: true,
     reservation: { id: reservation.id, date: reservation.date, seatNumber: reservation.seatNumber },
@@ -75,8 +81,8 @@ export async function createReservation(employeeId: string, date: string): Promi
  * Get reservation for employee on date, if any.
  */
 export async function getEmployeeReservationForDate(employeeId: string, date: string) {
-  return prisma.reservation.findUnique({
-    where: { employeeId_date: { employeeId, date } },
+  return prisma.reservation.findFirst({
+    where: { employeeId, date },
   });
 }
 

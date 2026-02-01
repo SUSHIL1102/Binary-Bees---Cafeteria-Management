@@ -15,15 +15,20 @@ export default function Login() {
     e.preventDefault();
     setError("");
     setLoading(true);
-    const res = await login(email.trim(), name.trim());
-    setLoading(false);
-    if (res.error) {
-      setError(res.error);
-      return;
-    }
-    if (res.data?.token && res.data?.employee) {
-      setAuth(res.data.token, res.data.employee);
-      navigate("/", { replace: true });
+    try {
+      const res = await login(email.trim(), name.trim());
+      if (res.error) {
+        setError(res.error);
+        return;
+      }
+      if (res.data?.token && res.data?.employee) {
+        setAuth(res.data.token, res.data.employee);
+        navigate("/", { replace: true });
+      }
+    } catch (_e) {
+      setError("Cannot reach server. Is the backend running on http://localhost:3001?");
+    } finally {
+      setLoading(false);
     }
   };
 

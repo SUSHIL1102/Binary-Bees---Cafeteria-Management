@@ -49,7 +49,15 @@ authRouter.post(
       const result = await mockSsoLogin(email, name);
       res.json(result);
     } catch (e) {
-      res.status(500).json({ error: "Login failed" });
+      const err = e as Error;
+      const message =
+        process.env.NODE_ENV === "development" && err?.message
+          ? err.message
+          : "Login failed";
+      if (process.env.NODE_ENV === "development") {
+        console.error("[auth/login]", err);
+      }
+      res.status(500).json({ error: message });
     }
   }
 );

@@ -4,7 +4,7 @@ A full-stack cafeteria management service: employees log in (w3 SSO / mock for d
 
 ## Tech stack
 
-- **Backend:** Node.js, Express, TypeScript, Prisma, SQLite (dev), Swagger (OpenAPI 3), JWT
+- **Backend:** Node.js, Express, TypeScript, Prisma, **MongoDB**, Swagger (OpenAPI 3), JWT
 - **Frontend:** React, Vite, TypeScript
 - **Tests:** Jest (backend unit + API tests)
 
@@ -12,6 +12,7 @@ A full-stack cafeteria management service: employees log in (w3 SSO / mock for d
 
 - Node.js 18+
 - npm
+- **MongoDB** (local or [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) free tier)
 
 ## Quick start (localhost)
 
@@ -25,10 +26,19 @@ cd client && npm install && cd ..
 
 ### 2. Backend: database and env
 
+**MongoDB:** Prisma requires MongoDB to be run as a **replica set** (even with one node). Easiest options:
+
+- **MongoDB Atlas** (free tier): create a cluster, get connection string, use as `DATABASE_URL`. Atlas is already a replica set.
+- **Local replica set:** [Run MongoDB as a single-node replica set](https://www.mongodb.com/docs/manual/tutorial/convert-standalone-to-replica-set/) (e.g. `mongod --replSet rs0` then `rs.initiate()` in the shell).
+
+Ensure MongoDB is running, then:
+
 ```bash
 cd server
 cp .env.example .env
+# Edit .env and set DATABASE_URL (e.g. mongodb://localhost:27017/cafeteria or your Atlas URI)
 npx prisma db push
+npx prisma generate
 ```
 
 ### 3. Run backend
@@ -57,7 +67,7 @@ cd server
 npm run test
 ```
 
-Tests use the same SQLite DB; they clean up after themselves. For isolated test DB, set `DATABASE_URL=file:./prisma/test.db` and run `npx prisma db push` before tests.
+Tests use an **in-memory MongoDB replica set** (via `mongodb-memory-server`), so you don't need a real MongoDB running for tests. No extra setup required.
 
 ## Project structure
 
@@ -99,7 +109,7 @@ Protected routes use header: `Authorization: Bearer <token>`.
 
 - One reservation per employee per day.
 - Maximum 100 reservations per date (seat capacity).
-- Employee and reservation data stored in DB (Prisma + SQLite).
+- Employee and reservation data stored in DB (Prisma + MongoDB). Easy to inspect collections in MongoDB Compass or Atlas.
 
 ## w3 SSO (production)
 
@@ -113,8 +123,8 @@ Local dev continues to use the mock: POST `/api/auth/login` with `email` and `na
 
 ## Cloud deployment (later)
 
-- Set `DATABASE_URL` to a cloud DB (e.g. PostgreSQL).
-- Run migrations: `npx prisma migrate deploy`.
+- Set `DATABASE_URL` to MongoDB Atlas (or another hosted MongoDB).
+- Run `npx prisma db push` to sync schema (MongoDB has no migrations; Prisma pushes the schema).
 - Set `JWT_SECRET` and env for the Node app.
 - Deploy server (e.g. Cloud Foundry, Kubernetes, serverless) and frontend (static hosting or same app serving static).
 
