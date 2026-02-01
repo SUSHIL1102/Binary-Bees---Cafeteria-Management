@@ -3,10 +3,11 @@ import { body, param, query, validationResult } from "express-validator";
 import { authMiddleware } from "../middleware/auth.js";
 import {
   createReservation,
-  getEmployeeReservationForDate,
+  getEmployeeReservationForDateAndSlot,
   getReservationsByEmployee,
   cancelReservation,
 } from "../services/reservationService.js";
+import { TIME_SLOTS } from "../config/constants.js";
 
 export const reservationRouter = Router();
 reservationRouter.use(authMiddleware);
@@ -15,8 +16,8 @@ reservationRouter.use(authMiddleware);
  * @openapi
  * /api/reservations:
  *   post:
- *     summary: Reserve a seat
- *     description: One reservation per employee per day. Fails if seats full or already reserved.
+ *     summary: Reserve seats for a date and time slot
+ *     description: One reservation per employee per date per time slot. Party size 1..100.
  *     tags: [Reservations]
  *     security: [bearerAuth: []]
  *     requestBody:
@@ -25,12 +26,14 @@ reservationRouter.use(authMiddleware);
  *         application/json:
  *           schema:
  *             type: object
- *             required: [date]
+ *             required: [date, timeSlot, numberOfPeople]
  *             properties:
- *               date: { type: string, format: date, example: "2025-02-01" }
+ *               date: { type: string, format: date }
+ *               timeSlot: { type: string, example: "09:00" }
+ *               numberOfPeople: { type: integer, minimum: 1, maximum: 100 }
  *     responses:
  *       201:
- *         description: Reservation created
+ *         description: Reservation created (id, date, timeSlot, seatNumbers)
  *       400:
  *         description: Validation or business rule error
  *       401:
@@ -39,6 +42,8 @@ reservationRouter.use(authMiddleware);
 reservationRouter.post(
   "/",
   body("date").isDate({ format: "YYYY-MM-DD", strictMode: true }),
+  body("timeSlot").isIn([...TIME_SLOTS]),
+  body("numberOfPeople").isInt({ min: 1, max: 100 }),
   async (req: Request, res: Response) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -46,8 +51,19 @@ reservationRouter.post(
       return;
     }
     const employeeId = (req as Request & { user: { employeeId: string } }).user.employeeId;
-    const { date } = req.body as { date: string };
-    const result = await createReservation(employeeId, date);
+    const { date, timeSlot, numberOfPeople, seatNumbers } = req.body as {
+      date: string;
+      timeSlot: string;
+      numberOfPeople: number;
+      seatNumbers?: number[];
+    };
+    const result = await createReservation(
+      employeeId,
+      date,
+      timeSlot,
+      numberOfPeople,
+      seatNumbers
+    );
     if (!result.success) {
       res.status(400).json({ error: result.error });
       return;
@@ -67,16 +83,19 @@ reservationRouter.post(
  *       - in: query
  *         name: date
  *         schema: { type: string, format: date }
- *         description: Optional; if provided, returns only reservation for that date.
+ *       - in: query
+ *         name: timeSlot
+ *         schema: { type: string }
  *     responses:
  *       200:
- *         description: List of reservations
+ *         description: List of reservations (id, date, timeSlot, seatNumbers)
  *       401:
  *         description: Unauthorized
  */
 reservationRouter.get(
   "/",
   query("date").optional().isDate({ format: "YYYY-MM-DD", strictMode: true }),
+  query("timeSlot").optional().isIn([...TIME_SLOTS]),
   async (req: Request, res: Response) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -85,8 +104,9 @@ reservationRouter.get(
     }
     const employeeId = (req as Request & { user: { employeeId: string } }).user.employeeId;
     const date = req.query.date as string | undefined;
-    if (date) {
-      const one = await getEmployeeReservationForDate(employeeId, date);
+    const timeSlot = req.query.timeSlot as string | undefined;
+    if (date && timeSlot) {
+      const one = await getEmployeeReservationForDateAndSlot(employeeId, date, timeSlot);
       res.json(one ? [one] : []);
       return;
     }

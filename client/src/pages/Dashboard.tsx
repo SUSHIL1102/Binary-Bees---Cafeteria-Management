@@ -1,10 +1,13 @@
 import { useState, useEffect } from "react";
 import {
+  getTimeSlots,
   getAvailability,
   createReservation,
   getMyReservations,
   cancelReservation,
+  type ReservationItem,
 } from "../api/client";
+import SeatMap from "../components/SeatMap";
 
 function formatDate(d: string) {
   return new Date(d + "Z").toLocaleDateString("en-IN", {
@@ -15,30 +18,50 @@ function formatDate(d: string) {
   });
 }
 
+type Step = 1 | 2 | 3;
+
 export default function Dashboard() {
-  const [date, setDate] = useState(() => {
-    const d = new Date();
-    return d.toISOString().slice(0, 10);
-  });
+  const [step, setStep] = useState<Step>(1);
+  const [timeSlots, setTimeSlots] = useState<string[]>([]);
+  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [timeSlot, setTimeSlot] = useState("");
+  const [numberOfPeople, setNumberOfPeople] = useState(1);
   const [availability, setAvailability] = useState<{
     date: string;
+    timeSlot: string;
     totalSeats: number;
     taken: number;
     available: number;
     takenSeatNumbers: number[];
   } | null>(null);
-  const [myReservations, setMyReservations] = useState<
-    Array<{ id: string; date: string; seatNumber: number }>
-  >([]);
+  const [confirmedReservation, setConfirmedReservation] = useState<{
+    id: string;
+    date: string;
+    timeSlot: string;
+    seatNumbers: number[];
+  } | null>(null);
+  const [myReservations, setMyReservations] = useState<ReservationItem[]>([]);
+  const [selectedSeatNumbers, setSelectedSeatNumbers] = useState<number[]>([]);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
-  const [loadingReserve, setLoadingReserve] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [loadingList, setLoadingList] = useState(false);
 
-  const fetchAvailability = async (d: string) => {
-    const res = await getAvailability(d);
-    if (res.data) setAvailability(res.data);
-    else setAvailability(null);
-  };
+  useEffect(() => {
+    getTimeSlots().then((res) => {
+      if (res.data && res.data.length) {
+        setTimeSlots(res.data);
+        if (!timeSlot) setTimeSlot(res.data[0]);
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!timeSlot) return;
+    getAvailability(date, timeSlot).then((res) => {
+      if (res.data) setAvailability(res.data);
+      else setAvailability(null);
+    });
+  }, [date, timeSlot]);
 
   const fetchMyReservations = async () => {
     setLoadingList(true);
@@ -48,26 +71,39 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    fetchAvailability(date);
-  }, [date]);
-
-  useEffect(() => {
     fetchMyReservations();
   }, []);
 
-  const handleReserve = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleStep1Next = () => {
     setMessage(null);
-    setLoadingReserve(true);
-    const res = await createReservation(date);
-    setLoadingReserve(false);
+    setSelectedSeatNumbers([]);
+    if (availability && availability.available >= numberOfPeople) setStep(2);
+    else setMessage({ type: "error", text: "Not enough seats for this slot. Pick another date or time." });
+  };
+
+  const handleToggleSeat = (seatNumber: number) => {
+    setSelectedSeatNumbers((prev) =>
+      prev.includes(seatNumber) ? prev.filter((n) => n !== seatNumber) : [...prev, seatNumber]
+    );
+  };
+
+  const handleConfirmBooking = async () => {
+    setMessage(null);
+    setLoading(true);
+    const res = await createReservation(
+      date,
+      timeSlot,
+      numberOfPeople,
+      selectedSeatNumbers.length === numberOfPeople ? selectedSeatNumbers : undefined
+    );
+    setLoading(false);
     if (res.error) {
       setMessage({ type: "error", text: res.error });
       return;
     }
     if (res.data) {
-      setMessage({ type: "success", text: `Seat #${res.data.seatNumber} reserved for ${date}` });
-      fetchAvailability(date);
+      setConfirmedReservation(res.data);
+      setStep(3);
       fetchMyReservations();
     }
   };
@@ -77,65 +113,160 @@ export default function Dashboard() {
     const res = await cancelReservation(id);
     if (res.status === 204) {
       setMessage({ type: "success", text: "Reservation cancelled." });
+      if (confirmedReservation?.id === id) setConfirmedReservation(null);
       fetchMyReservations();
-      fetchAvailability(date);
+      if (date && timeSlot) getAvailability(date, timeSlot).then((r) => r.data && setAvailability(r.data));
     } else {
       setMessage({ type: "error", text: res.error ?? "Failed to cancel" });
     }
   };
 
-  const myReservationForDate = myReservations.find((r) => r.date === date);
+  const startNewBooking = () => {
+    setStep(1);
+    setConfirmedReservation(null);
+    setMessage(null);
+  };
+
+  const hasEnoughSeats = availability && availability.available >= numberOfPeople;
+  const alreadyBookedThisSlot = myReservations.some((r) => r.date === date && r.timeSlot === timeSlot);
 
   return (
     <div className="container">
       <h1>Reserve a seat</h1>
       <p style={{ color: "var(--muted)", marginBottom: "1.5rem" }}>
-        One reservation per employee per day. Capacity: 100 seats.
+        Choose date, time slot (1 hour), and number of people. Capacity: 100 seats per slot.
       </p>
 
       {message && (
-        <div className={`alert alert-${message.type}`}>
-          {message.text}
+        <div className={`alert alert-${message.type}`}>{message.text}</div>
+      )}
+
+      {/* Step 1: Date, time slot, number of people */}
+      {step === 1 && (
+        <div className="card">
+          <h2 style={{ marginTop: 0 }}>Select date, time & party size</h2>
+          <div className="form-group">
+            <label htmlFor="date">Date</label>
+            <input
+              id="date"
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              min={new Date().toISOString().slice(0, 10)}
+            />
+          </div>
+          <div className="form-group">
+            <label htmlFor="timeSlot">Time slot (1 hour)</label>
+            <select
+              id="timeSlot"
+              value={timeSlot}
+              onChange={(e) => setTimeSlot(e.target.value)}
+              style={{ width: "100%", padding: "0.5rem 0.75rem", border: "1px solid var(--border)", borderRadius: "var(--radius)", background: "var(--bg)", color: "var(--text)" }}
+            >
+              {timeSlots.map((s) => (
+                <option key={s} value={s}>{s} – {String(Number(s.slice(0, 2)) + 1).padStart(2, "0")}:00</option>
+              ))}
+            </select>
+          </div>
+          <div className="form-group">
+            <label htmlFor="numberOfPeople">Number of people</label>
+            <input
+              id="numberOfPeople"
+              type="number"
+              min={1}
+              max={100}
+              value={numberOfPeople}
+              onChange={(e) => setNumberOfPeople(Number(e.target.value) || 1)}
+              style={{ width: "100%", padding: "0.5rem 0.75rem", border: "1px solid var(--border)", borderRadius: "var(--radius)", background: "var(--bg)", color: "var(--text)" }}
+            />
+          </div>
+          {availability && (
+            <p style={{ marginBottom: "1rem", color: "var(--muted)" }}>
+              {availability.available} seats available for this slot ({availability.taken} taken).
+            </p>
+          )}
+          {alreadyBookedThisSlot ? (
+            <p style={{ color: "var(--warning)" }}>You already have a reservation for this date and time slot.</p>
+          ) : (
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={handleStep1Next}
+              disabled={!availability || !hasEnoughSeats}
+            >
+              Next – Choose seats
+            </button>
+          )}
         </div>
       )}
 
-      <div className="card">
-        <h2 style={{ marginTop: 0 }}>Availability</h2>
-        <div className="form-group">
-          <label htmlFor="date">Date</label>
-          <input
-            id="date"
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            min={new Date().toISOString().slice(0, 10)}
-          />
-        </div>
-        {availability && (
-          <>
-            <p>
-              <span className="badge badge-success">{availability.available} available</span>
-              <span style={{ marginLeft: "0.5rem", color: "var(--muted)" }}>
-                {availability.taken} / {availability.totalSeats} taken
-              </span>
-            </p>
-            {myReservationForDate ? (
-              <p style={{ color: "var(--success)" }}>
-                You have seat #{myReservationForDate.seatNumber} for this date.
+      {/* Step 2: Seat map + confirm */}
+      {step === 2 && (
+        <div className="card">
+          <h2 style={{ marginTop: 0 }}>Choose your seats</h2>
+          <p>
+            <strong>{date}</strong>, <strong>{timeSlot}</strong> (1 hour) · Select <strong>{numberOfPeople}</strong> seat{numberOfPeople > 1 ? "s" : ""}
+          </p>
+          {availability && (
+            <>
+              <p style={{ marginBottom: "0.5rem", color: "var(--muted)", fontSize: "0.9rem" }}>
+                {availability.available} available · {availability.taken} taken
               </p>
-            ) : availability.available > 0 ? (
-              <form onSubmit={handleReserve}>
-                <button type="submit" className="btn btn-primary" disabled={loadingReserve}>
-                  {loadingReserve ? "Reserving…" : "Reserve a seat"}
-                </button>
-              </form>
-            ) : (
-              <p style={{ color: "var(--warning)" }}>No seats available for this date.</p>
-            )}
-          </>
-        )}
-      </div>
+              <SeatMap
+                takenSeatNumbers={availability.takenSeatNumbers}
+                selectedSeatNumbers={selectedSeatNumbers}
+                onToggleSeat={handleToggleSeat}
+                maxSelection={numberOfPeople}
+              />
+              {selectedSeatNumbers.length > 0 && (
+                <p style={{ fontSize: "0.9rem", color: "var(--muted)" }}>
+                  Selected: #{selectedSeatNumbers.sort((a, b) => a - b).join(", #")}
+                </p>
+              )}
+            </>
+          )}
+          <div style={{ display: "flex", gap: "0.5rem", marginTop: "1rem" }}>
+            <button type="button" className="btn" onClick={() => { setStep(1); setSelectedSeatNumbers([]); }}>
+              Back
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={handleConfirmBooking}
+              disabled={loading || selectedSeatNumbers.length !== numberOfPeople}
+            >
+              {loading ? "Booking…" : `Confirm ${selectedSeatNumbers.length === numberOfPeople ? "booking" : `(${selectedSeatNumbers.length}/${numberOfPeople} seats)`}`}
+            </button>
+          </div>
+        </div>
+      )}
 
+      {/* Step 3: Booking confirmed, details + delete */}
+      {step === 3 && confirmedReservation && (
+        <div className="card">
+          <h2 style={{ marginTop: 0 }}>Booking confirmed</h2>
+          <p style={{ color: "var(--success)" }}>Your reservation has been confirmed.</p>
+          <ul style={{ listStyle: "none", padding: 0, margin: "1rem 0" }}>
+            <li><strong>Date:</strong> {formatDate(confirmedReservation.date)}</li>
+            <li><strong>Time slot:</strong> {confirmedReservation.timeSlot} (1 hour)</li>
+            <li><strong>Seats:</strong> #{confirmedReservation.seatNumbers.join(", #")}</li>
+          </ul>
+          <div style={{ display: "flex", gap: "0.5rem" }}>
+            <button
+              type="button"
+              className="btn btn-danger"
+              onClick={() => handleCancel(confirmedReservation.id)}
+            >
+              Delete this reservation
+            </button>
+            <button type="button" className="btn btn-primary" onClick={startNewBooking}>
+              Make another booking
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* My reservations */}
       <div className="card">
         <h2 style={{ marginTop: 0 }}>My reservations</h2>
         {loadingList ? (
@@ -151,12 +282,13 @@ export default function Dashboard() {
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
+                  flexWrap: "wrap",
                   padding: "0.5rem 0",
                   borderBottom: "1px solid var(--border)",
                 }}
               >
                 <span>
-                  {formatDate(r.date)} — Seat #{r.seatNumber}
+                  {formatDate(r.date)} · {r.timeSlot} · Seat{r.seatNumbers.length > 1 ? "s" : ""} #{r.seatNumbers.join(", #")}
                 </span>
                 <button
                   type="button"
@@ -173,7 +305,7 @@ export default function Dashboard() {
       </div>
 
       <p style={{ marginTop: "2rem", fontSize: "0.9rem", color: "var(--muted)" }}>
-        API docs: <a href="/api-docs" target="_blank" rel="noopener noreferrer">Swagger UI</a> (run server and open from backend URL, e.g. http://localhost:3001/api-docs)
+        API docs: <a href="/api-docs" target="_blank" rel="noopener noreferrer">Swagger UI</a>
       </p>
     </div>
   );

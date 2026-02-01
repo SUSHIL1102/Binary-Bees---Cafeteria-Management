@@ -29,6 +29,7 @@ app.get("/", (_req, res) => {
       auth: "/api/auth",
       reservations: "/api/reservations",
       availability: "/api/availability",
+      "availability/time-slots": "/api/availability/time-slots",
       employees: "/api/employees",
     },
   });

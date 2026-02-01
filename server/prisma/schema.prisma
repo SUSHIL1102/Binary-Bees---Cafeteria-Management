@@ -1,5 +1,4 @@
-// Cafeteria Seat Reservation - Single location, 100 seats, 1000 employees
-// Database: MongoDB (easier to inspect and show updates)
+// Cafeteria Seat Reservation - Single location, 100 seats per time slot, 1-hour slots
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,7 +10,7 @@ datasource db {
 
 model Employee {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  w3Id      String   @unique // w3 SSO identifier (or mock email for dev)
+  w3Id      String   @unique
   email     String
   name      String
   location  String   @default("Bangalore")
@@ -24,13 +23,12 @@ model Reservation {
   id         String   @id @default(auto()) @map("_id") @db.ObjectId
   employeeId String   @db.ObjectId
   employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  date       String   // YYYY-MM-DD - one reservation per employee per day
-  seatNumber Int      // 1..100
+  date       String   // YYYY-MM-DD
+  timeSlot   String   // e.g. "09:00" (1-hour slot)
+  seatNumbers Int[]   // seats assigned (1..100), length = party size
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  // Documented for app logic; MongoDB does not enforce compound unique
-  @@unique([employeeId, date])
-  @@unique([date, seatNumber])
-  @@index([date])
+  @@unique([employeeId, date, timeSlot])
+  @@index([date, timeSlot])
 }

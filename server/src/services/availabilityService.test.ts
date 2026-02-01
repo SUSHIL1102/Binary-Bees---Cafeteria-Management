@@ -1,7 +1,8 @@
-import { getAvailabilityForDate } from "./availabilityService.js";
+import { getAvailabilityForDateAndSlot } from "./availabilityService.js";
 import { prisma } from "../lib/prisma.js";
 
 const testDate = "2025-02-03";
+const testSlot = "12:00";
 
 describe("availabilityService", () => {
   let employeeId: string;
@@ -20,12 +21,13 @@ describe("availabilityService", () => {
   });
 
   beforeEach(async () => {
-    await prisma.reservation.deleteMany({ where: { date: testDate } });
+    await prisma.reservation.deleteMany({ where: { date: testDate, timeSlot: testSlot } });
   });
 
   it("returns full availability when no reservations", async () => {
-    const avail = await getAvailabilityForDate(testDate);
+    const avail = await getAvailabilityForDateAndSlot(testDate, testSlot);
     expect(avail.date).toBe(testDate);
+    expect(avail.timeSlot).toBe(testSlot);
     expect(avail.totalSeats).toBe(100);
     expect(avail.taken).toBe(0);
     expect(avail.available).toBe(100);
@@ -34,11 +36,12 @@ describe("availabilityService", () => {
 
   it("returns correct taken/available after reservations", async () => {
     await prisma.reservation.create({
-      data: { employeeId, date: testDate, seatNumber: 1 },
+      data: { employeeId, date: testDate, timeSlot: testSlot, seatNumbers: [1, 2] },
     });
-    const avail = await getAvailabilityForDate(testDate);
-    expect(avail.taken).toBe(1);
-    expect(avail.available).toBe(99);
+    const avail = await getAvailabilityForDateAndSlot(testDate, testSlot);
+    expect(avail.taken).toBe(2);
+    expect(avail.available).toBe(98);
     expect(avail.takenSeatNumbers).toContain(1);
+    expect(avail.takenSeatNumbers).toContain(2);
   });
 });

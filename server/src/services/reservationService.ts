@@ -1,88 +1,125 @@
 import { prisma } from "../lib/prisma.js";
-import { SEAT_CAPACITY } from "../config/constants.js";
+import { SEAT_CAPACITY, TIME_SLOTS } from "../config/constants.js";
 
 const SEAT_NUMBERS = Array.from({ length: SEAT_CAPACITY }, (_, i) => i + 1);
 
 /**
- * Get list of seat numbers already taken for a date.
+ * Get list of seat numbers already taken for a date + time slot.
  */
-export async function getTakenSeatsForDate(date: string): Promise<number[]> {
+export async function getTakenSeatsForDateAndSlot(date: string, timeSlot: string): Promise<number[]> {
   const reservations = await prisma.reservation.findMany({
-    where: { date },
-    select: { seatNumber: true },
+    where: { date, timeSlot },
+    select: { seatNumbers: true },
   });
-  return reservations.map((r) => r.seatNumber);
+  return reservations.flatMap((r) => r.seatNumbers);
 }
 
 /**
- * Get count of reservations for a date (must not exceed SEAT_CAPACITY).
+ * Check if employee already has a reservation for this date + time slot.
  */
-export async function getReservationCountForDate(date: string): Promise<number> {
-  return prisma.reservation.count({ where: { date } });
-}
-
-/**
- * Check if employee already has a reservation for the date (one per employee per day).
- */
-export async function hasEmployeeReservationForDate(employeeId: string, date: string): Promise<boolean> {
+export async function hasEmployeeReservationForDateAndSlot(
+  employeeId: string,
+  date: string,
+  timeSlot: string
+): Promise<boolean> {
   const existing = await prisma.reservation.findFirst({
-    where: { employeeId, date },
+    where: { employeeId, date, timeSlot },
   });
   return !!existing;
 }
 
 /**
- * Find next available seat number for date (1..100). Returns null if full.
+ * Find next N available seat numbers for date + slot. Returns array of length N or null if not enough.
  */
-export async function findNextAvailableSeat(date: string): Promise<number | null> {
-  const taken = await getTakenSeatsForDate(date);
-  const available = SEAT_NUMBERS.find((n) => !taken.includes(n));
-  return available ?? null;
+export async function findNextAvailableSeats(
+  date: string,
+  timeSlot: string,
+  count: number
+): Promise<number[] | null> {
+  const taken = await getTakenSeatsForDateAndSlot(date, timeSlot);
+  const available: number[] = [];
+  for (const n of SEAT_NUMBERS) {
+    if (!taken.includes(n)) available.push(n);
+    if (available.length >= count) return available;
+  }
+  return available.length === count ? available : null;
 }
 
 /**
- * Create a reservation if business rules pass.
- * - Employee can have only one reservation per day.
- * - Total reservations for date must be < SEAT_CAPACITY.
+ * Create a reservation: date + time slot + party size.
+ * If requestedSeatNumbers is provided, uses those (validates availability); otherwise auto-assigns.
  */
-export async function createReservation(employeeId: string, date: string): Promise<
-  | { success: true; reservation: { id: string; date: string; seatNumber: number } }
+export async function createReservation(
+  employeeId: string,
+  date: string,
+  timeSlot: string,
+  numberOfPeople: number,
+  requestedSeatNumbers?: number[]
+): Promise<
+  | { success: true; reservation: { id: string; date: string; timeSlot: string; seatNumbers: number[] } }
   | { success: false; error: string }
 > {
-  const [alreadyBooked, count, nextSeat] = await Promise.all([
-    hasEmployeeReservationForDate(employeeId, date),
-    getReservationCountForDate(date),
-    findNextAvailableSeat(date),
-  ]);
-
-  if (alreadyBooked) {
-    return { success: false, error: "You already have a reservation for this date" };
+  if (numberOfPeople < 1 || numberOfPeople > SEAT_CAPACITY) {
+    return { success: false, error: "Number of people must be between 1 and " + SEAT_CAPACITY };
   }
-  if (count >= SEAT_CAPACITY || nextSeat === null) {
-    return { success: false, error: "No seats available for this date" };
+  if (!(TIME_SLOTS as readonly string[]).includes(timeSlot)) {
+    return { success: false, error: "Invalid time slot" };
+  }
+
+  const alreadyBooked = await hasEmployeeReservationForDateAndSlot(employeeId, date, timeSlot);
+  if (alreadyBooked) {
+    return { success: false, error: "You already have a reservation for this date and time slot" };
+  }
+
+  let seatNumbers: number[];
+  if (requestedSeatNumbers && requestedSeatNumbers.length === numberOfPeople) {
+    const taken = await getTakenSeatsForDateAndSlot(date, timeSlot);
+    const invalid = requestedSeatNumbers.some(
+      (n) => n < 1 || n > SEAT_CAPACITY || taken.includes(n)
+    );
+    const duplicates = new Set(requestedSeatNumbers).size !== requestedSeatNumbers.length;
+    if (invalid || duplicates) {
+      return { success: false, error: "One or more selected seats are no longer available" };
+    }
+    seatNumbers = [...requestedSeatNumbers].sort((a, b) => a - b);
+  } else {
+    const nextSeats = await findNextAvailableSeats(date, timeSlot, numberOfPeople);
+    if (!nextSeats || nextSeats.length < numberOfPeople) {
+      return { success: false, error: "Not enough seats available for this time slot" };
+    }
+    seatNumbers = nextSeats.slice(0, numberOfPeople);
   }
 
   const reservation = await prisma.reservation.create({
-    data: { employeeId, date, seatNumber: nextSeat },
+    data: { employeeId, date, timeSlot, seatNumbers },
   });
 
   if (process.env.NODE_ENV === "development") {
-    console.log("[Reservation created – full document as stored in MongoDB]:");
+    console.log("[Reservation created – full document]:");
     console.log(JSON.stringify(reservation, null, 2));
   }
 
   return {
     success: true,
-    reservation: { id: reservation.id, date: reservation.date, seatNumber: reservation.seatNumber },
+    reservation: {
+      id: reservation.id,
+      date: reservation.date,
+      timeSlot: reservation.timeSlot,
+      seatNumbers: reservation.seatNumbers,
+    },
   };
 }
 
 /**
- * Get reservation for employee on date, if any.
+ * Get reservation for employee on date + time slot, if any.
  */
-export async function getEmployeeReservationForDate(employeeId: string, date: string) {
+export async function getEmployeeReservationForDateAndSlot(
+  employeeId: string,
+  date: string,
+  timeSlot: string
+) {
   return prisma.reservation.findFirst({
-    where: { employeeId, date },
+    where: { employeeId, date, timeSlot },
   });
 }
 
@@ -92,7 +129,7 @@ export async function getEmployeeReservationForDate(employeeId: string, date: st
 export async function getReservationsByEmployee(employeeId: string) {
   return prisma.reservation.findMany({
     where: { employeeId },
-    orderBy: { date: "asc" },
+    orderBy: [{ date: "asc" }, { timeSlot: "asc" }],
   });
 }
 

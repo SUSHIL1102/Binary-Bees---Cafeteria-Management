@@ -38,26 +38,51 @@ export async function login(email: string, name: string) {
   );
 }
 
-export async function getAvailability(date: string) {
+export async function getTimeSlots() {
+  return request<string[]>("/availability/time-slots");
+}
+
+export async function getAvailability(date: string, timeSlot: string) {
   return request<{
     date: string;
+    timeSlot: string;
     totalSeats: number;
     taken: number;
     available: number;
     takenSeatNumbers: number[];
-  }>(`/availability?date=${encodeURIComponent(date)}`);
+  }>(`/availability?date=${encodeURIComponent(date)}&timeSlot=${encodeURIComponent(timeSlot)}`);
 }
 
-export async function createReservation(date: string) {
-  return request<{ id: string; date: string; seatNumber: number }>("/reservations", {
-    method: "POST",
-    body: JSON.stringify({ date }),
-  });
+export async function createReservation(
+  date: string,
+  timeSlot: string,
+  numberOfPeople: number,
+  seatNumbers?: number[]
+) {
+  return request<{ id: string; date: string; timeSlot: string; seatNumbers: number[] }>(
+    "/reservations",
+    {
+      method: "POST",
+      body: JSON.stringify(
+        seatNumbers?.length ? { date, timeSlot, numberOfPeople, seatNumbers } : { date, timeSlot, numberOfPeople }
+      ),
+    }
+  );
 }
 
-export async function getMyReservations(date?: string) {
-  const q = date ? `?date=${encodeURIComponent(date)}` : "";
-  return request<Array<{ id: string; date: string; seatNumber: number }>>(`/reservations${q}`);
+export type ReservationItem = {
+  id: string;
+  date: string;
+  timeSlot: string;
+  seatNumbers: number[];
+};
+
+export async function getMyReservations(date?: string, timeSlot?: string) {
+  const params = new URLSearchParams();
+  if (date) params.set("date", date);
+  if (timeSlot) params.set("timeSlot", timeSlot);
+  const q = params.toString() ? `?${params}` : "";
+  return request<ReservationItem[]>(`/reservations${q}`);
 }
 
 export async function cancelReservation(id: string) {

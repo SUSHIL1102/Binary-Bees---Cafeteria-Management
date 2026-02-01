@@ -153,3 +153,164 @@ input, select {
 }
 .badge-success { background: rgba(63, 185, 80, 0.2); color: var(--success); }
 .badge-warning { background: rgba(210, 153, 34, 0.2); color: var(--warning); }
+
+/* Seat map (cafeteria with tables) */
+.seat-map {
+  margin: 1.5rem 0;
+}
+.seat-map__stage {
+  text-align: center;
+  padding: 0.6rem 1rem;
+  margin-bottom: 1rem;
+  background: linear-gradient(180deg, var(--border) 0%, rgba(45, 58, 79, 0.6) 100%);
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  color: var(--muted);
+  max-width: min(520px, 100%);
+  margin-left: auto;
+  margin-right: auto;
+  border: 1px solid var(--border);
+}
+.seat-map__tables {
+  padding: 0.5rem 0;
+}
+/* Each table: 4-seat cafeteria table */
+.seat-map__table {
+  position: relative;
+  background: linear-gradient(145deg, #2a2520 0%, #1f1b18 100%);
+  border: 1px solid rgba(139, 119, 101, 0.4);
+  border-radius: 10px;
+  padding: 8px;
+  min-height: 72px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+}
+.seat-map__table-surface {
+  position: absolute;
+  inset: 18px 10px 18px 10px;
+  background: linear-gradient(160deg, #3d3429 0%, #2a231c 100%);
+  border-radius: 6px;
+  pointer-events: none;
+}
+.seat-map__table-seats {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 4px;
+  min-height: 56px;
+}
+/* Dummy cafeteria furniture (non-reservable) */
+.seat-map__dummy {
+  min-height: 72px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  border: 1px dashed var(--border);
+  background: var(--bg);
+  opacity: 0.85;
+}
+.seat-map__dummy-label {
+  font-size: 0.7rem;
+  color: var(--muted);
+  text-align: center;
+  line-height: 1.2;
+}
+.seat-map__dummy--coffee {
+  background: linear-gradient(145deg, #2a2520 0%, #1f1b18 100%);
+  border-style: solid;
+  border-color: rgba(139, 119, 101, 0.5);
+}
+.seat-map__dummy--coffee .seat-map__dummy-label { color: #c4a77d; }
+.seat-map__dummy--salad {
+  background: linear-gradient(145deg, #1e2a1e 0%, #182418 100%);
+  border-color: rgba(99, 139, 99, 0.4);
+}
+.seat-map__dummy--salad .seat-map__dummy-label { color: #8fbc8f; }
+.seat-map__dummy--condiments {
+  background: linear-gradient(145deg, #2a2820 0%, #1f1e18 100%);
+  border-color: rgba(139, 139, 99, 0.4);
+}
+.seat-map__dummy--condiments .seat-map__dummy-label { color: #b8b870; }
+.seat-map__dummy--trash {
+  background: linear-gradient(145deg, #252525 0%, #1a1a1a 100%);
+  border-color: var(--border);
+}
+.seat-map__dummy--trash .seat-map__dummy-label { color: var(--muted); }
+.seat-map__dummy--utensils {
+  background: linear-gradient(145deg, #25252a 0%, #1a1a1f 100%);
+  border-color: rgba(99, 99, 139, 0.4);
+}
+.seat-map__dummy--utensils .seat-map__dummy-label { color: #9090b0; }
+.seat-map__seat {
+  aspect-ratio: 1;
+  min-width: 22px;
+  min-height: 22px;
+  max-width: 32px;
+  max-height: 32px;
+  margin: 0 auto;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+.seat-map__seat--available {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+.seat-map__seat--available:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+.seat-map__seat--selected {
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  color: var(--bg);
+}
+.seat-map__seat--selected:hover {
+  filter: brightness(1.1);
+}
+.seat-map__seat--taken {
+  background: var(--border);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+.seat-map__seat-num {
+  user-select: none;
+}
+.seat-map__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: center;
+  margin-top: 1rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.seat-map__legend-item::before {
+  content: "";
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  margin-right: 0.35rem;
+  vertical-align: middle;
+}
+.seat-map__legend-item--available::before {
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+.seat-map__legend-item--selected::before {
+  background: var(--accent);
+}
+.seat-map__legend-item--taken::before {
+  background: var(--border);
+}

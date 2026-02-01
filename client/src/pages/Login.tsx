@@ -3,7 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { login } from "../api/client";
 
+type LoginMode = "choose" | "demo" | "ibm";
+
 export default function Login() {
+  const [mode, setMode] = useState<LoginMode>("choose");
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [error, setError] = useState("");
@@ -11,7 +14,7 @@ export default function Login() {
   const { login: setAuth } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleDemoSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
@@ -32,17 +35,85 @@ export default function Login() {
     }
   };
 
+  const handleIbmLogin = () => {
+    // Placeholder: w3 SSO will be plug-and-play later. For now show a message.
+    setError("IBM w3 SSO login is not connected yet. Use Demo user for now.");
+  };
+
+  if (mode === "choose") {
+    return (
+      <div className="container">
+        <div className="card" style={{ maxWidth: 420, marginTop: "3rem" }}>
+          <h1 style={{ marginTop: 0 }}>Cafeteria Seat Reservation</h1>
+          <p style={{ color: "var(--muted)", marginBottom: "1.5rem" }}>
+            Choose how you want to sign in.
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+            <button
+              type="button"
+              className="btn btn-primary"
+              style={{ padding: "1rem", textAlign: "left" }}
+              onClick={() => setMode("demo")}
+            >
+              <strong>Demo user</strong>
+              <br />
+              <span style={{ fontSize: "0.9rem", opacity: 0.9 }}>
+                Sign in with email and name (for testing / local dev)
+              </span>
+            </button>
+            <button
+              type="button"
+              className="btn"
+              style={{ padding: "1rem", textAlign: "left" }}
+              onClick={() => setMode("ibm")}
+            >
+              <strong>IBM employee</strong>
+              <br />
+              <span style={{ fontSize: "0.9rem", color: "var(--muted)" }}>
+                Sign in with w3 SSO (company credentials)
+              </span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (mode === "ibm") {
+    return (
+      <div className="container">
+        <div className="card" style={{ maxWidth: 400, marginTop: "3rem" }}>
+          <h1 style={{ marginTop: 0 }}>IBM w3 SSO</h1>
+          <p style={{ color: "var(--muted)", marginBottom: "1.5rem" }}>
+            You will be redirected to the company login page. (Integration in progress.)
+          </p>
+          {error && <div className="alert alert-error">{error}</div>}
+          <button
+            type="button"
+            className="btn btn-primary"
+            style={{ width: "100%", marginBottom: "0.5rem" }}
+            onClick={handleIbmLogin}
+          >
+            Continue with w3 SSO
+          </button>
+          <button type="button" className="btn" style={{ width: "100%" }} onClick={() => { setMode("choose"); setError(""); }}>
+            Back
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // mode === "demo"
   return (
     <div className="container">
       <div className="card" style={{ maxWidth: 400, marginTop: "3rem" }}>
-        <h1 style={{ marginTop: 0 }}>Cafeteria Seat Reservation</h1>
+        <h1 style={{ marginTop: 0 }}>Demo user</h1>
         <p style={{ color: "var(--muted)", marginBottom: "1.5rem" }}>
-          Sign in with your company credentials. (Local dev: use any email and name.)
+          Sign in with any email and name for local testing.
         </p>
-        <form onSubmit={handleSubmit}>
-          {error && (
-            <div className="alert alert-error">{error}</div>
-          )}
+        <form onSubmit={handleDemoSubmit}>
+          {error && <div className="alert alert-error">{error}</div>}
           <div className="form-group">
             <label htmlFor="email">Email</label>
             <input
@@ -67,16 +138,13 @@ export default function Login() {
               autoComplete="name"
             />
           </div>
-          <button type="submit" className="btn btn-primary" disabled={loading} style={{ width: "100%" }}>
+          <button type="submit" className="btn btn-primary" disabled={loading} style={{ width: "100%", marginBottom: "0.5rem" }}>
             {loading ? "Signing in…" : "Sign in"}
           </button>
+          <button type="button" className="btn" style={{ width: "100%" }} onClick={() => { setMode("choose"); setError(""); }}>
+            Back
+          </button>
         </form>
-        <p style={{ marginTop: "1rem", fontSize: "0.85rem", color: "var(--muted)" }}>
-          In production, this would use w3 SSO. See{" "}
-          <a href="https://w3.ibm.com/w3publisher/w3idsso/boarding" target="_blank" rel="noopener noreferrer">
-            w3 SSO boarding
-          </a>.
-        </p>
       </div>
     </div>
   );
