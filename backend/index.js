@@ -137,6 +137,11 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Test routes
+const testRoutes = require("./routes/test");
+app.use("/test", testRoutes);
+
+
 // Swagger
 const swaggerSpec = swaggerJsdoc({
   definition: {
