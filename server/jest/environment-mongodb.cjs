@@ -17,9 +17,9 @@ const uriFile = path.join(__dirname, "..", ".test-mongo-uri");
 class MongoEnvironment extends NodeEnvironment {
   async setup() {
     await super.setup();
-    if (fs.existsSync(uriFile)) {
-      const uri = fs.readFileSync(uriFile, "utf8").trim();
-      process.env.DATABASE_URL = uri;
+    // Only reuse URI if we started MongoDB in this process (avoid stale file from previous run or preload).
+    if (global.__JEST_MONGO_URI__) {
+      process.env.DATABASE_URL = global.__JEST_MONGO_URI__;
       return;
     }
     const { MongoMemoryReplSet } = require("mongodb-memory-server");
@@ -31,6 +31,7 @@ class MongoEnvironment extends NodeEnvironment {
     dbUri += dbUri.includes("?") ? "&" : "?";
     dbUri += "serverSelectionTimeoutMS=20000";
     fs.writeFileSync(uriFile, dbUri, "utf8");
+    global.__JEST_MONGO_URI__ = dbUri;
     this.global.__MONGO_REPL_SET__ = replSet;
     process.env.DATABASE_URL = dbUri;
     // Replica set needs time to elect primary (especially on CI). Wait before prisma db push.
