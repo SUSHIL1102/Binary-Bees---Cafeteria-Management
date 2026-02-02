@@ -92,7 +92,7 @@ export default function SeatMap({
           display: "grid",
           gridTemplateColumns: `repeat(${LAYOUT_COLS}, 1fr)`,
           gap: "12px",
-          maxWidth: "min(520px, 100%)",
+          maxWidth: "min(750px, 100%)",
           margin: "0 auto",
         }}
       >
