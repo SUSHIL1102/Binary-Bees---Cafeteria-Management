@@ -41,112 +41,146 @@ export default function Login() {
     window.location.href = "/api/auth/w3/login";
   };
 
-  if (mode === "choose") {
-    return (
-      <div className="container">
-        <div className="card" style={{ maxWidth: 420, marginTop: "3rem" }}>
-          <h1 style={{ marginTop: 0 }}>Cafeteria Seat Reservation</h1>
-          <p style={{ color: "var(--muted)", marginBottom: "1.5rem" }}>
-            Choose how you want to sign in.
-          </p>
-          <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-            <button
-              type="button"
-              className="btn btn-primary"
-              style={{ padding: "1rem", textAlign: "left" }}
-              onClick={() => setMode("demo")}
-            >
-              <strong>Demo user</strong>
-              <br />
-              <span style={{ fontSize: "0.9rem", opacity: 0.9 }}>
-                Sign in with email and name (for testing / local dev)
-              </span>
-            </button>
-            <button
-              type="button"
-              className="btn"
-              style={{ padding: "1rem", textAlign: "left" }}
-              onClick={() => setMode("ibm")}
-            >
-              <strong>IBM employee</strong>
-              <br />
-              <span style={{ fontSize: "0.9rem", color: "var(--muted)" }}>
-                Sign in with w3 SSO (company credentials)
-              </span>
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (mode === "ibm") {
-    return (
-      <div className="container">
-        <div className="card" style={{ maxWidth: 400, marginTop: "3rem" }}>
-          <h1 style={{ marginTop: 0 }}>IBM w3 SSO</h1>
-          <p style={{ color: "var(--muted)", marginBottom: "1.5rem" }}>
-            You will be redirected to the company login page to sign in with your w3 credentials.
-          </p>
-          {error && <div className="alert alert-error">{error}</div>}
-          <button
-            type="button"
-            className="btn btn-primary"
-            style={{ width: "100%", marginBottom: "0.5rem" }}
-            onClick={handleIbmLogin}
-          >
-            Continue with w3 SSO
-          </button>
-          <button type="button" className="btn" style={{ width: "100%" }} onClick={() => { setMode("choose"); setError(""); }}>
-            Back
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // mode === "demo"
   return (
-    <div className="container">
-      <div className="card" style={{ maxWidth: 400, marginTop: "3rem" }}>
-        <h1 style={{ marginTop: 0 }}>Demo user</h1>
-        <p style={{ color: "var(--muted)", marginBottom: "1.5rem" }}>
-          Sign in with any email and name for local testing.
+    <div className="auth-layout">
+      <section className="auth-hero">
+        <div className="auth-hero-tagline">
+          <span className="auth-hero-tagline-dot" />
+          Smart cafeteria bookings
+        </div>
+        <h1 className="auth-hero-heading">Reserve your perfect cafeteria spot in seconds.</h1>
+        <p className="auth-hero-subtitle">
+          Avoid the rush, sit with your team, and keep track of your reservations with a clear, visual seat map.
         </p>
-        <form onSubmit={handleDemoSubmit}>
-          {error && <div className="alert alert-error">{error}</div>}
-          <div className="form-group">
-            <label htmlFor="email">Email</label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@company.com"
-              required
-              autoComplete="email"
-            />
-          </div>
-          <div className="form-group">
-            <label htmlFor="name">Full Name</label>
-            <input
-              id="name"
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Your name"
-              required
-              autoComplete="name"
-            />
-          </div>
-          <button type="submit" className="btn btn-primary" disabled={loading} style={{ width: "100%", marginBottom: "0.5rem" }}>
-            {loading ? "Signing in…" : "Sign in"}
-          </button>
-          <button type="button" className="btn" style={{ width: "100%" }} onClick={() => { setMode("choose"); setError(""); }}>
-            Back
-          </button>
-        </form>
-      </div>
+      </section>
+
+      <section className="auth-panel-wrapper">
+        <div className="auth-panel">
+          {mode === "choose" && (
+            <div className="card">
+              <h1 className="auth-panel-title">Sign in to reserve seats</h1>
+              <p className="auth-panel-subtitle">
+                Choose how you want to sign in and start booking cafeteria seats for you and your team.
+              </p>
+              <div className="auth-mode-list">
+                <button
+                  type="button"
+                  className="btn auth-mode-card"
+                  onClick={() => setMode("demo")}
+                >
+                  <div className="auth-mode-title">
+                    Demo user
+                    <span className="auth-mode-pill">Great for testing</span>
+                  </div>
+                  <div className="auth-mode-description">
+                    Sign in with any email and name to quickly try the app in a local or demo environment.
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  className="btn auth-mode-card"
+                  onClick={() => setMode("ibm")}
+                >
+                  <div className="auth-mode-title">
+                    IBM employee
+                  </div>
+                  <div className="auth-mode-description">
+                    Use your corporate w3 SSO account to sign in securely through the company login page.
+                  </div>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {mode === "ibm" && (
+            <div className="card">
+              <h1 className="auth-panel-title">Sign in with w3 SSO</h1>
+              <p className="auth-panel-subtitle">
+                You will be redirected to the IBM w3 login page to authenticate with your company credentials.
+              </p>
+              {error && <div className="alert alert-error">{error}</div>}
+              <button
+                type="button"
+                className="btn btn-primary"
+                style={{ width: "100%", marginBottom: "0.5rem" }}
+                onClick={handleIbmLogin}
+              >
+                Continue to w3 SSO
+              </button>
+              <div className="auth-back-link">
+                Prefer another option?
+                <button
+                  type="button"
+                  className="auth-back-link-button"
+                  onClick={() => {
+                    setMode("choose");
+                    setError("");
+                  }}
+                >
+                  Go back to sign-in methods
+                </button>
+              </div>
+            </div>
+          )}
+
+          {mode === "demo" && (
+            <div className="card">
+              <h1 className="auth-panel-title">Demo user sign-in</h1>
+              <p className="auth-panel-subtitle">
+                Use any email and name to explore the full reservation experience in a safe demo mode.
+              </p>
+              <form onSubmit={handleDemoSubmit}>
+                {error && <div className="alert alert-error">{error}</div>}
+                <div className="form-group">
+                  <label htmlFor="email">Email</label>
+                  <input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@company.com"
+                    required
+                    autoComplete="email"
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="name">Full Name</label>
+                  <input
+                    id="name"
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Your name"
+                    required
+                    autoComplete="name"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={loading}
+                  style={{ width: "100%", marginBottom: "0.5rem" }}
+                >
+                  {loading ? "Signing in…" : "Sign in as demo user"}
+                </button>
+              </form>
+              <div className="auth-back-link">
+                Want to switch method?
+                <button
+                  type="button"
+                  className="auth-back-link-button"
+                  onClick={() => {
+                    setMode("choose");
+                    setError("");
+                  }}
+                >
+                  Choose a different sign-in
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
     </div>
   );
 }
