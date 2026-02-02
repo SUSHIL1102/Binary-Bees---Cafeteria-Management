@@ -12,7 +12,7 @@ pipeline {
 
   options {
     buildDiscarder(logRotator(numToKeepStr: '10'))
-    timeout(time: 15, unit: 'MINUTES')
+    timeout(time: 30, unit: 'MINUTES')
     timestamps()
   }
 
@@ -33,7 +33,14 @@ pipeline {
         dir('server') {
           sh 'npm ci --no-audit --no-fund'
           sh 'npx prisma generate'
-          sh 'npm test'
+          echo 'Pre-downloading MongoDB binary (first run on agent can take 5–15 min)...'
+          timeout(time: 20, unit: 'MINUTES') {
+            sh 'node scripts/preload-mongo.cjs'
+          }
+          echo 'Running tests...'
+          timeout(time: 8, unit: 'MINUTES') {
+            sh 'npm test'
+          }
         }
       }
       post {
