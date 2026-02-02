@@ -78,6 +78,7 @@ Tests use an **in-memory MongoDB replica set** (via `mongodb-memory-server`), so
 
 ```
 cafeteria_seat_reservation/
+├── Jenkinsfile             # Jenkins pipeline (test + build)
 ├── server/                 # API
 │   ├── prisma/
 │   │   └── schema.prisma   # Employee, Reservation
@@ -125,6 +126,28 @@ Auth is built so you can plug in **w3 SSO** later:
 3. On successful w3 login, get w3 user id and profile (email, name), find or create `Employee` by `w3Id`, then issue your JWT as in `authService.mockSsoLogin`.
 
 Local dev continues to use the mock: POST `/api/auth/login` with `email` and `name`.
+
+## Jenkins CI
+
+The repo includes a **Jenkinsfile** for pipeline-as-code. The pipeline:
+
+1. **Checkout** — clone the repository.
+2. **Backend: Install & Test** — `npm ci`, `prisma generate`, `npm test` in `server/`. Tests use in-memory MongoDB (no real DB required). JUnit XML and coverage HTML are published for test trends and coverage report.
+3. **Backend: Build** — `npm run build` (TypeScript compile).
+4. **Frontend: Install & Build** — `npm ci`, `npm run build` in `client/`.
+
+**Requirements**
+
+- Jenkins with Node.js 18+ available on the agent (or install Node on the build machine).
+- No MongoDB needed on the agent; tests use `mongodb-memory-server`.
+
+**Setup in Jenkins**
+
+1. New Item → Pipeline.
+2. Pipeline → Definition: **Pipeline script from SCM**.
+3. SCM: Git, repository URL, branch (e.g. `main` or `feature/jenkins`).
+4. Script Path: `Jenkinsfile`.
+5. Save and run. Optionally install **JUnit** and **HTML Publisher** plugins for test results and coverage report.
 
 ## Cloud deployment (later)
 

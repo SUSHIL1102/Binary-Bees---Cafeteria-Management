@@ -7,6 +7,10 @@ export default {
   testMatch: ["**/*.test.ts"],
   collectCoverageFrom: ["src/**/*.ts", "!src/index.ts", "!**/*.d.ts"],
   coverageDirectory: "coverage",
+  reporters:
+    process.env.CI === "true"
+      ? ["default", ["jest-junit", { outputDirectory: "coverage", outputName: "junit.xml" }]]
+      : ["default"],
   globalSetup: "<rootDir>/jest/globalSetup.cjs",
   globalTeardown: "<rootDir>/jest/globalTeardown.cjs",
   setupFilesAfterEnv: ["<rootDir>/jest/setupTests.cjs"],
