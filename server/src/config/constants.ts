@@ -3,6 +3,7 @@
  */
 export const SEAT_CAPACITY = 100;
 export const LOCATION = "Bangalore";
+export const RESERVATION_COST = 5;
 
 /** 1-hour time slots from 08:00 to 17:00 (10 slots) */
 export const TIME_SLOTS = [
