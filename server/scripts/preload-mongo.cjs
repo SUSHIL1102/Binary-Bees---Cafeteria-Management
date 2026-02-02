@@ -31,6 +31,14 @@ async function main() {
   dbUri += dbUri.includes("?") ? "&" : "?";
   dbUri += "serverSelectionTimeoutMS=20000";
 
+  // Write URI file *before* prisma db push so Jenkins finds it even if prisma hangs
+  const outFile =
+    process.env.WORKSPACE && process.env.CI
+      ? path.join(process.env.WORKSPACE, "server", ".test-mongo-uri")
+      : path.join(process.cwd(), ".test-mongo-uri");
+  fs.writeFileSync(outFile, dbUri, "utf8");
+  console.log("[preload] URI written to", outFile);
+
   console.log("[preload] Waiting 15s for replica set...");
   await new Promise((r) => setTimeout(r, 15000));
 
@@ -48,14 +56,6 @@ async function main() {
     process.exit(1);
   }
 
-  // Write to cwd so Jenkins (running from server/) finds it regardless of __dirname
-  const outFile = path.join(process.cwd(), ".test-mongo-uri");
-  fs.writeFileSync(outFile, dbUri, "utf8");
-  console.log("[preload] URI written to", outFile);
-  if (!fs.existsSync(outFile)) {
-    console.error("[preload] Failed to verify .test-mongo-uri");
-    process.exit(1);
-  }
   console.log("[preload] Keeping MongoDB running for tests...");
 
   // Keep process alive so MongoDB stays up; Jenkins will kill this after npm test
