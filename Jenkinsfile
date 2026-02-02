@@ -33,14 +33,18 @@ pipeline {
         dir('server') {
           sh 'npm ci --no-audit --no-fund'
           sh 'npx prisma generate'
-          echo 'Pre-downloading MongoDB binary (first run on agent can take 5–15 min)...'
-          timeout(time: 20, unit: 'MINUTES') {
-            sh 'node scripts/preload-mongo.cjs'
-          }
+          sh 'rm -f .test-mongo-uri'
+          echo 'Starting MongoDB + prisma db push in background...'
+          sh 'nohup node scripts/preload-mongo.cjs > preload.log 2>&1 & echo $! > preload.pid'
+          echo 'Waiting 100s for preload (MongoDB + prisma db push)...'
+          sh 'sleep 100'
+          sh 'cat preload.log || true'
+          sh 'test -f .test-mongo-uri || (echo "Preload did not write .test-mongo-uri (prisma db push may have failed or timed out)" && exit 1)'
           echo 'Running tests...'
-          timeout(time: 15, unit: 'MINUTES') {
+          timeout(time: 10, unit: 'MINUTES') {
             sh 'npm test -- --verbose'
           }
+          sh 'kill $(cat preload.pid) 2>/dev/null || true'
         }
       }
       post {
