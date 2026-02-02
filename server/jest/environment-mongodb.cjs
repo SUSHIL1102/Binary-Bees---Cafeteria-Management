@@ -30,8 +30,8 @@ class MongoEnvironment extends NodeEnvironment {
     process.stdout.write("[Jest env] Starting in-memory MongoDB...\n");
     const { MongoMemoryReplSet } = require("mongodb-memory-server");
     const replSet = await MongoMemoryReplSet.create({ replSet: { count: 1 } });
-    const uri = replSet.getUri();
-    let dbUri = uri.includes("?")
+    const uri = await replSet.getUri();
+    let dbUri = typeof uri === "string" && uri.includes("?")
       ? uri.replace("/?", `/${TEST_DB_NAME}?`)
       : uri.replace(/\/?$/, "") + "/" + TEST_DB_NAME;
     dbUri += dbUri.includes("?") ? "&" : "?";

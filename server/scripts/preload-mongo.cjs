@@ -11,7 +11,6 @@ const { execSync } = require("child_process");
 const { MongoMemoryReplSet } = require("mongodb-memory-server");
 
 const TEST_DB_NAME = "cafeteria_test";
-const uriFile = path.join(__dirname, "..", ".test-mongo-uri");
 
 async function main() {
   if (process.env.CI !== "true") {
@@ -25,8 +24,8 @@ async function main() {
 
   console.log("[preload] Starting in-memory MongoDB...");
   const replSet = await MongoMemoryReplSet.create({ replSet: { count: 1 } });
-  const uri = replSet.getUri();
-  let dbUri = uri.includes("?")
+  const uri = await replSet.getUri();
+  let dbUri = typeof uri === "string" && uri.includes("?")
     ? uri.replace("/?", `/${TEST_DB_NAME}?`)
     : uri.replace(/\/?$/, "") + "/" + TEST_DB_NAME;
   dbUri += dbUri.includes("?") ? "&" : "?";
@@ -49,8 +48,15 @@ async function main() {
     process.exit(1);
   }
 
-  fs.writeFileSync(uriFile, dbUri, "utf8");
-  console.log("[preload] URI written. Keeping MongoDB running for tests...");
+  // Write to cwd so Jenkins (running from server/) finds it regardless of __dirname
+  const outFile = path.join(process.cwd(), ".test-mongo-uri");
+  fs.writeFileSync(outFile, dbUri, "utf8");
+  console.log("[preload] URI written to", outFile);
+  if (!fs.existsSync(outFile)) {
+    console.error("[preload] Failed to verify .test-mongo-uri");
+    process.exit(1);
+  }
+  console.log("[preload] Keeping MongoDB running for tests...");
 
   // Keep process alive so MongoDB stays up; Jenkins will kill this after npm test
   await new Promise(() => {});

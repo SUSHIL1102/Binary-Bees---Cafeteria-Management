@@ -33,18 +33,27 @@ pipeline {
         dir('server') {
           sh 'npm ci --no-audit --no-fund'
           sh 'npx prisma generate'
-          sh 'rm -f .test-mongo-uri'
-          echo 'Starting MongoDB + prisma db push in background...'
-          sh 'nohup node scripts/preload-mongo.cjs > preload.log 2>&1 & echo $! > preload.pid'
-          echo 'Waiting 100s for preload (MongoDB + prisma db push)...'
-          sh 'sleep 100'
-          sh 'cat preload.log || true'
-          sh 'test -f .test-mongo-uri || (echo "Preload did not write .test-mongo-uri (prisma db push may have failed or timed out)" && exit 1)'
-          echo 'Running tests...'
-          timeout(time: 10, unit: 'MINUTES') {
-            sh 'npm test -- --verbose'
+          script {
+            if (env.DATABASE_URL?.trim()) {
+              echo 'DATABASE_URL is set: using real MongoDB (prisma db push + tests)'
+              sh 'npx prisma db push --accept-data-loss'
+              timeout(time: 10, unit: 'MINUTES') {
+                sh 'npm test -- --verbose'
+              }
+            } else {
+              echo 'DATABASE_URL not set: starting in-memory MongoDB via preload, then running tests'
+              sh 'rm -f .test-mongo-uri'
+              sh 'nohup node scripts/preload-mongo.cjs > preload.log 2>&1 &'
+              echo 'Waiting 100s for preload (MongoDB + prisma db push)...'
+              sh 'sleep 100'
+              sh 'cat preload.log'
+              sh 'test -f .test-mongo-uri || (echo "Preload did not write .test-mongo-uri"; exit 1)'
+              timeout(time: 10, unit: 'MINUTES') {
+                sh 'npm test -- --verbose'
+              }
+              sh 'pkill -f "node scripts/preload-mongo.cjs" || true'
+            }
           }
-          sh 'kill $(cat preload.pid) 2>/dev/null || true'
         }
       }
       post {
