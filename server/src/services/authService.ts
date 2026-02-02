@@ -1,6 +1,7 @@
 import { prisma } from "../lib/prisma.js";
 import jwt from "jsonwebtoken";
 import { LOCATION } from "../config/constants.js";
+import { getManagerFromUnifiedProfile } from "./unifiedProfileService.js";
 
 const JWT_SECRET = process.env.JWT_SECRET ?? "dev-secret";
 const JWT_EXPIRY = "7d";
@@ -25,18 +26,58 @@ export async function w3SsoLogin(
   email: string,
   name: string
 ): Promise<{ token: string; employee: { id: string; email: string; name: string } }> {
+  // let employee = await prisma.employee.findUnique({ where: { w3Id } });
+  // if (!employee) {
+  //   employee = await prisma.employee.create({
+  //     data: { w3Id, email, name, location: LOCATION },
+  //   });
+  // } else {
+  //   // Optionally update email/name if they changed in w3 profile
+  //   employee = await prisma.employee.update({
+  //     where: { id: employee.id },
+  //     data: { email, name },
+  //   });
+  // }
+
   let employee = await prisma.employee.findUnique({ where: { w3Id } });
-  if (!employee) {
-    employee = await prisma.employee.create({
-      data: { w3Id, email, name, location: LOCATION },
+
+if (!employee) {
+  // 👇 NEW: fetch manager info only for new employees
+  const managerInfo = await getManagerFromUnifiedProfile(email);
+
+  let managerId: string | undefined;
+
+  if (managerInfo) {
+    const manager = await prisma.manager.upsert({
+      where: { uid: managerInfo.managerUid },
+      update: {},
+      create: {
+        uid: managerInfo.managerUid,
+        name: managerInfo.managerName,
+        bluDollars: 50,
+      },
     });
-  } else {
-    // Optionally update email/name if they changed in w3 profile
-    employee = await prisma.employee.update({
-      where: { id: employee.id },
-      data: { email, name },
-    });
+
+    managerId = manager.id;
   }
+
+  employee = await prisma.employee.create({
+    data: {
+      w3Id,
+      email,
+      name,
+      location: LOCATION,
+      managerId,
+    },
+  });
+} else {
+  // Existing employee → only sync name/email
+  employee = await prisma.employee.update({
+    where: { id: employee.id },
+    data: { email, name },
+  });
+}
+
   const token = jwt.sign(
     { employeeId: employee.id, w3Id: employee.w3Id } as TokenPayload,
     JWT_SECRET,
