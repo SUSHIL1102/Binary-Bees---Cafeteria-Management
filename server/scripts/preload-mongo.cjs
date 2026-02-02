@@ -29,7 +29,7 @@ async function main() {
     ? uri.replace("/?", `/${TEST_DB_NAME}?`)
     : uri.replace(/\/?$/, "") + "/" + TEST_DB_NAME;
   dbUri += dbUri.includes("?") ? "&" : "?";
-  dbUri += "serverSelectionTimeoutMS=20000";
+  dbUri += "directConnection=true&serverSelectionTimeoutMS=20000";
 
   // Write URI file *before* prisma db push so Jenkins finds it even if prisma hangs
   const outFile =

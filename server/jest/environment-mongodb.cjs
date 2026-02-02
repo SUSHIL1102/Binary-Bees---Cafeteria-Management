@@ -35,7 +35,7 @@ class MongoEnvironment extends NodeEnvironment {
       ? uri.replace("/?", `/${TEST_DB_NAME}?`)
       : uri.replace(/\/?$/, "") + "/" + TEST_DB_NAME;
     dbUri += dbUri.includes("?") ? "&" : "?";
-    dbUri += "serverSelectionTimeoutMS=20000";
+    dbUri += "directConnection=true&serverSelectionTimeoutMS=20000";
     fs.writeFileSync(uriFile, dbUri, "utf8");
     global.__JEST_MONGO_URI__ = dbUri;
     this.global.__MONGO_REPL_SET__ = replSet;
