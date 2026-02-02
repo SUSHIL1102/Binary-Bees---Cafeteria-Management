@@ -9,26 +9,43 @@ datasource db {
 }
 
 model Employee {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  w3Id      String   @unique
-  email     String
-  name      String
-  location  String   @default("Bangalore")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String        @id @default(cuid()) @map("_id")
+  w3Id         String        @unique
+  email        String
+  name         String
+  location     String        @default("Bangalore")
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  managerId String?
+  manager   Manager? @relation(fields: [managerId], references: [id])
+  
   reservations Reservation[]
 }
 
 model Reservation {
-  id         String   @id @default(auto()) @map("_id") @db.ObjectId
-  employeeId String   @db.ObjectId
-  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  date       String   // YYYY-MM-DD
-  timeSlot   String   // e.g. "09:00" (1-hour slot)
-  seatNumbers Int[]   // seats assigned (1..100), length = party size
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id           String        @id @default(cuid()) @map("_id")
+  employeeId   String
+  employee     Employee      @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  date         String        // YYYY-MM-DD
+  timeSlot     String        // e.g. "09:00"
+  seatNumbers  Int[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 
   @@unique([employeeId, date, timeSlot])
   @@index([date, timeSlot])
+}
+
+
+model Manager {
+  id         String     @id @default(cuid()) @map("_id")
+  uid        String     @unique          // "0058TN744"
+  name       String
+  bluDollars Int        @default(50)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  employees  Employee[]
 }
