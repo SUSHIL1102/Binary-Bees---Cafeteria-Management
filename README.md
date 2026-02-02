@@ -118,20 +118,69 @@ Protected routes use header: `Authorization: Bearer <token>`.
 
 ## w3 SSO (production)
 
-Auth is built so you can plug in **w3 SSO** later:
+**w3 SSO is integrated.** The app supports both mock login (dev) and w3 OIDC:
 
-1. Register/use w3 SSO per [w3 SSO boarding](https://w3.ibm.com/w3publisher/w3idsso/boarding).
-2. Replace the mock login flow with the w3 OAuth/OIDC callback.
-3. On successful w3 login, get w3 user id and profile (email, name), find or create `Employee` by `w3Id`, then issue your JWT as in `authService.mockSsoLogin`.
+- **Mock login:** POST `/api/auth/login` with `email` and `name` (or use “Demo user” on the login page).
+- **w3 SSO:** User clicks “Sign in with w3 SSO” → GET `/api/auth/w3/login` (redirects to w3) → w3 redirects to GET `/api/auth/w3/callback` → app finds/creates `Employee` by `w3Id`, issues JWT, redirects to frontend with token.
 
-Local dev continues to use the mock: POST `/api/auth/login` with `email` and `name`.
+**Setup:**
 
-## Cloud deployment (later)
+1. Register your app in [w3 SSO Provisioner](https://w3.ibm.com/w3publisher/w3idsso/boarding) (OIDC, Authorization Code).
+2. In the provisioner, set **Redirect URI** to `http://localhost:3001/api/auth/w3/callback` (must match `W3_REDIRECT_URI` in `.env` exactly).
+3. In `server/.env`, set:
+   - `W3_CLIENT_ID`, `W3_CLIENT_SECRET` (from provisioner)
+   - `W3_AUTH_URL`, `W3_TOKEN_URL` (e.g. preprod: `https://preprod.login.w3.ibm.com/oidc/endpoint/default/authorize` and `.../token`)
+   - `W3_REDIRECT_URI` = same as in provisioner
+   - `CLIENT_URL` = frontend URL (e.g. `http://localhost:5173`) for redirect after login
 
-- Set `DATABASE_URL` to MongoDB Atlas (or another hosted MongoDB).
-- Run `npx prisma db push` to sync schema (MongoDB has no migrations; Prisma pushes the schema).
-- Set `JWT_SECRET` and env for the Node app.
-- Deploy server (e.g. Cloud Foundry, Kubernetes, serverless) and frontend (static hosting or same app serving static).
+## Cloud deployment
+
+### 1. Database
+
+- Use **MongoDB Atlas** (or another hosted MongoDB). Set `DATABASE_URL` in your server env to the production connection string.
+- From the `server/` folder run once: `npx prisma db push` and `npx prisma generate` (e.g. in the deploy step or a one-off job).
+
+### 2. Backend (Node/Express)
+
+- **Build:** `cd server && npm ci && npm run build` → output in `dist/`.
+- **Run:** `node dist/index.js` (or `npm start`). Ensure Node 18+.
+- **Env vars** (set in your host’s env or dashboard):
+  - `DATABASE_URL` – MongoDB connection string
+  - `JWT_SECRET` – strong secret for production
+  - `PORT` – port the app listens on (e.g. `3001` or host default)
+  - `NODE_ENV=production`
+  - For w3 SSO: `W3_CLIENT_ID`, `W3_CLIENT_SECRET`, `W3_AUTH_URL`, `W3_TOKEN_URL`, `W3_REDIRECT_URI`, `CLIENT_URL` (see below)
+
+**Where to host:** Railway, Render, IBM Cloud Foundry, Fly.io, or any Node host. Point the service at the `server/` directory and use the build/start commands above.
+
+### 3. Frontend (React/Vite)
+
+**Option A – Same origin (recommended for simplicity)**  
+Serve the built frontend from the Express server so `/api` and the app share one origin:
+
+- Build: `cd client && npm ci && npm run build` → output in `client/dist/`.
+- In the backend, serve `client/dist` as static files and add a fallback to `index.html` for client-side routing (see your Express docs or add `express.static` + catch-all).
+- No CORS or API URL config needed; the app uses relative `/api` requests.
+
+**Option B – Separate host (e.g. Vercel, Netlify)**  
+- Deploy the `client/` (build: `npm run build`, publish `dist/`). The client uses relative `/api`; if frontend and backend are on different domains, you must either proxy `/api` to the backend on the frontend host or add an API base URL (e.g. `VITE_API_URL`) in the client and use it for requests.
+- Ensure the backend allows your frontend origin in CORS (the app uses `cors({ origin: true })`; for production you may set `origin` to your frontend URL).
+
+### 4. w3 SSO in production
+
+- In the **w3 SSO Provisioner**, add the **production** redirect URI, e.g. `https://your-api.example.com/api/auth/w3/callback`.
+- In the server env set:
+  - `W3_REDIRECT_URI` = that exact production callback URL
+  - `CLIENT_URL` = production frontend URL (e.g. `https://your-app.example.com`) so the callback redirects users back to the right place after login.
+
+### 5. Checklist
+
+| Item | Action |
+|------|--------|
+| DB | `DATABASE_URL` → Atlas (or other), run `npx prisma db push` once |
+| Secrets | `JWT_SECRET` (and w3 secrets) set in production env only |
+| w3 | Production redirect URI registered; `W3_REDIRECT_URI` and `CLIENT_URL` set |
+| CORS | If frontend and backend are on different domains, restrict `origin` to your frontend URL |
 
 ## License
 

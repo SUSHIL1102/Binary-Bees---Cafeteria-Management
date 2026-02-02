@@ -2,6 +2,7 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import { authRouter } from "./routes/auth.js";
+import { w3AuthRouter } from "./routes/w3Auth.js";
 import { reservationRouter } from "./routes/reservations.js";
 import { availabilityRouter } from "./routes/availability.js";
 import { employeeRouter } from "./routes/employees.js";
@@ -16,6 +17,7 @@ app.use(express.json());
 
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use("/api/auth", authRouter);
+app.use("/api/auth/w3", w3AuthRouter);
 app.use("/api/reservations", reservationRouter);
 app.use("/api/availability", availabilityRouter);
 app.use("/api/employees", employeeRouter);

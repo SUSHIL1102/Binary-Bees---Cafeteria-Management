@@ -36,8 +36,9 @@ export default function Login() {
   };
 
   const handleIbmLogin = () => {
-    // Placeholder: w3 SSO will be plug-and-play later. For now show a message.
-    setError("IBM w3 SSO login is not connected yet. Use Demo user for now.");
+    setError("");
+    // Redirect to backend w3 SSO login; backend will redirect to w3, then back to /auth/callback with token
+    window.location.href = "/api/auth/w3/login";
   };
 
   if (mode === "choose") {
@@ -85,7 +86,7 @@ export default function Login() {
         <div className="card" style={{ maxWidth: 400, marginTop: "3rem" }}>
           <h1 style={{ marginTop: 0 }}>IBM w3 SSO</h1>
           <p style={{ color: "var(--muted)", marginBottom: "1.5rem" }}>
-            You will be redirected to the company login page. (Integration in progress.)
+            You will be redirected to the company login page to sign in with your w3 credentials.
           </p>
           {error && <div className="alert alert-error">{error}</div>}
           <button
