@@ -36,17 +36,23 @@ class MongoEnvironment extends NodeEnvironment {
     global.__JEST_MONGO_URI__ = dbUri;
     this.global.__MONGO_REPL_SET__ = replSet;
     process.env.DATABASE_URL = dbUri;
-    // Replica set needs time to elect primary (especially on CI). Wait before prisma db push.
-    const waitMs = process.env.CI === "true" ? 8000 : 3000;
+    // Replica set needs time to elect primary (especially on CI). Wait longer on CI.
+    const waitMs = process.env.CI === "true" ? 15000 : 3000;
     process.stdout.write(`[Jest env] Waiting ${waitMs / 1000}s for replica set...\n`);
     await new Promise((r) => setTimeout(r, waitMs));
     const serverDir = path.join(__dirname, "..");
-    process.stdout.write("[Jest env] Running prisma db push...\n");
-    execSync("npx prisma db push --accept-data-loss", {
-      env: { ...process.env, DATABASE_URL: dbUri },
-      cwd: serverDir,
-      stdio: "pipe",
-    });
+    process.stdout.write("[Jest env] Running prisma db push (timeout 90s)...\n");
+    try {
+      execSync("npx prisma db push --accept-data-loss", {
+        env: { ...process.env, DATABASE_URL: dbUri },
+        cwd: serverDir,
+        stdio: "inherit",
+        timeout: 90000,
+      });
+    } catch (err) {
+      process.stdout.write(`[Jest env] prisma db push failed: ${err.message}\n`);
+      throw err;
+    }
     process.stdout.write("[Jest env] Setup done.\n");
   }
 }
