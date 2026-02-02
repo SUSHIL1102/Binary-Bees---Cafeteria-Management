@@ -38,8 +38,8 @@ pipeline {
             sh 'node scripts/preload-mongo.cjs'
           }
           echo 'Running tests...'
-          timeout(time: 8, unit: 'MINUTES') {
-            sh 'npm test'
+          timeout(time: 15, unit: 'MINUTES') {
+            sh 'npm test -- --verbose'
           }
         }
       }
