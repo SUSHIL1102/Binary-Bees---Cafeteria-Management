@@ -129,25 +129,75 @@ Local dev continues to use the mock: POST `/api/auth/login` with `email` and `na
 
 ## Jenkins CI
 
-The repo includes a **Jenkinsfile** for pipeline-as-code. The pipeline:
+The repo includes a **Jenkinsfile** that runs: checkout → backend install & test → backend build → frontend install & build. Tests use in-memory MongoDB (no real DB on the agent). Below is the full setup so the job runs without "npm not found" or missing plugin errors.
 
-1. **Checkout** — clone the repository.
-2. **Backend: Install & Test** — `npm ci`, `prisma generate`, `npm test` in `server/`. Tests use in-memory MongoDB (no real DB required). JUnit XML and coverage HTML are published for test trends and coverage report.
-3. **Backend: Build** — `npm run build` (TypeScript compile).
-4. **Frontend: Install & Build** — `npm ci`, `npm run build` in `client/`.
+---
 
-**Requirements**
+### Step 1: Install the Node.js plugin
 
-- Jenkins with Node.js 18+ available on the agent (or install Node on the build machine).
-- No MongoDB needed on the agent; tests use `mongodb-memory-server`.
+1. In Jenkins, click **Manage Jenkins** (left sidebar).
+2. Click **Plugins**.
+3. Open the **Available plugins** tab.
+4. In the search box, type **NodeJS**.
+5. Check the box for **NodeJS Plugin**.
+6. Click **Install without restart** (or **Download now and install after restart**).
+7. If Jenkins asks to restart, do it and log in again.
 
-**Setup in Jenkins**
+---
 
-1. New Item → Pipeline.
-2. Pipeline → Definition: **Pipeline script from SCM**.
-3. SCM: Git, repository URL, branch (e.g. `main` or `feature/jenkins`).
-4. Script Path: `Jenkinsfile`.
-5. Save and run. Optionally install **JUnit** and **HTML Publisher** plugins for test results and coverage report.
+### Step 2: Add the Node 18 tool
+
+1. Click **Manage Jenkins** → **Tools**.
+2. Find the **NodeJS** section.
+3. Click **Add NodeJS**.
+4. Set:
+   - **Name:** type exactly **Node 18** (the Jenkinsfile expects this name).
+   - Check **Install automatically**.
+   - Under **Install from nodejs.org**, choose **Node 18.x** or **Node 20.x**.
+5. Click **Save** (bottom of the page).
+
+---
+
+### Step 3: Create the Pipeline job (if you don’t have it yet)
+
+1. From the Jenkins home page, click **New Item**.
+2. Enter a name (e.g. **cafeteria-seat-reservation**).
+3. Select **Pipeline** → click **OK**.
+4. Under **Pipeline**:
+   - **Definition:** choose **Pipeline script from SCM**.
+   - **SCM:** choose **Git**.
+   - **Repository URL:**  
+     `https://github.com/SUSHIL1102/Binary-Bees---Cafeteria-Management.git`
+   - **Credentials:** choose your GitHub credentials (username + Personal Access Token). If missing, add them under **Manage Jenkins → Credentials**.
+   - **Branch:** `*/feature/jenkins` (or `*/main` if the Jenkinsfile is on main).
+   - **Script Path:** `Jenkinsfile` (leave as is).
+5. Click **Save**.
+
+---
+
+### Step 4: Push the updated Jenkinsfile and run the job
+
+On your machine (Windows or Mac), in the project folder:
+
+```bash
+git add Jenkinsfile README.md
+git commit -m "fix: use Node.js tool in Jenkins; remove publishHTML"
+git push origin feature/jenkins
+```
+
+Then in Jenkins:
+
+1. Open your Pipeline job.
+2. Click **Build Now**.
+3. Click the build number (e.g. **#2**) → **Console Output** to watch the run.
+
+The pipeline will use the **Node 18** tool so `node` and `npm` are available, and it no longer uses the HTML Publisher plugin.
+
+---
+
+### Optional: Test results in Jenkins
+
+- Install the **JUnit** plugin (Manage Jenkins → Plugins → search **JUnit**). After a successful run, the job page will show **Test Result** and the trend.
 
 ## Cloud deployment (later)
 

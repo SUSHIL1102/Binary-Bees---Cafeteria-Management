@@ -1,9 +1,14 @@
 // Cafeteria Seat Reservation - Jenkins Pipeline
 // Runs backend tests (Jest + in-memory MongoDB) and frontend build.
-// Requires: Node.js 18+ (configure "Node 18" in Jenkins Global Tool Configuration, or use default node on agent)
+// Requires: Node.js plugin + "Node 18" (or "Node 20") in Manage Jenkins → Tools → NodeJS.
+// Optional: HTML Publisher plugin to add publishHTML for coverage report.
 
 pipeline {
   agent any
+
+  tools {
+    nodejs 'Node 18'
+  }
 
   options {
     buildDiscarder(logRotator(numToKeepStr: '10'))
@@ -34,13 +39,6 @@ pipeline {
       post {
         always {
           junit allowEmptyResults: true, testResults: 'server/coverage/junit.xml'
-          publishHTML(target: [
-            allowMissing: true,
-            alwaysLinkToLastBuild: true,
-            reportDir: 'server/coverage/lcov-report',
-            reportFiles: 'index.html',
-            reportName: 'Jest Coverage Report'
-          ])
         }
       }
     }
