@@ -1,7 +1,6 @@
 /** @type {import('ts-jest').JestConfigWithTsJest} */
 export default {
   preset: "ts-jest/presets/default-esm",
-  testEnvironment: "node",
   extensionsToTreatAsEsm: [".ts"],
   moduleNameMapper: { "^(\\.{1,2}/.*)\\.js$": "$1" },
   testMatch: ["**/*.test.ts"],
@@ -11,7 +10,7 @@ export default {
     process.env.CI === "true"
       ? ["default", ["jest-junit", { outputDirectory: "coverage", outputName: "junit.xml" }]]
       : ["default"],
-  globalSetup: "<rootDir>/jest/globalSetup.cjs",
+  testEnvironment: "<rootDir>/jest/environment-mongodb.cjs",
   globalTeardown: "<rootDir>/jest/globalTeardown.cjs",
   setupFilesAfterEnv: ["<rootDir>/jest/setupTests.cjs"],
   transform: {
