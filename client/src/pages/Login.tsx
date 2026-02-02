@@ -5,12 +5,27 @@ import { login } from "../api/client";
 
 type LoginMode = "choose" | "demo" | "ibm";
 
+const CenterWrapper = ({ children }: { children: React.ReactNode }) => (
+  <div
+    className="container"
+    style={{
+      minHeight: "100vh",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+    }}
+  >
+    {children}
+  </div>
+);
+
 export default function Login() {
   const [mode, setMode] = useState<LoginMode>("choose");
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
   const { login: setAuth } = useAuth();
   const navigate = useNavigate();
 
@@ -18,17 +33,20 @@ export default function Login() {
     e.preventDefault();
     setError("");
     setLoading(true);
+
     try {
       const res = await login(email.trim(), name.trim());
+
       if (res.error) {
         setError(res.error);
         return;
       }
+
       if (res.data?.token && res.data?.employee) {
         setAuth(res.data.token, res.data.employee);
         navigate("/", { replace: true });
       }
-    } catch (_e) {
+    } catch {
       setError("Cannot reach server. Is the backend running on http://localhost:3001?");
     } finally {
       setLoading(false);
@@ -37,18 +55,18 @@ export default function Login() {
 
   const handleIbmLogin = () => {
     setError("");
-    // Redirect to backend w3 SSO login; backend will redirect to w3, then back to /auth/callback with token
     window.location.href = "/api/auth/w3/login";
   };
 
   if (mode === "choose") {
     return (
-      <div className="container">
-        <div className="card" style={{ maxWidth: 420, marginTop: "3rem" }}>
+      <CenterWrapper>
+        <div className="card" style={{ maxWidth: 420, width: "100%" }}>
           <h1 style={{ marginTop: 0 }}>Cafeteria Seat Reservation</h1>
           <p style={{ color: "var(--muted)", marginBottom: "1.5rem" }}>
             Choose how you want to sign in.
           </p>
+
           <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
             <button
               type="button"
@@ -59,9 +77,10 @@ export default function Login() {
               <strong>Demo user</strong>
               <br />
               <span style={{ fontSize: "0.9rem", opacity: 0.9 }}>
-                Sign in with email and name (for testing / local dev)
+                Sign in with email and name (local testing)
               </span>
             </button>
+
             <button
               type="button"
               className="btn"
@@ -71,24 +90,26 @@ export default function Login() {
               <strong>IBM employee</strong>
               <br />
               <span style={{ fontSize: "0.9rem", color: "var(--muted)" }}>
-                Sign in with w3 SSO (company credentials)
+                Sign in with w3 SSO
               </span>
             </button>
           </div>
         </div>
-      </div>
+      </CenterWrapper>
     );
   }
 
   if (mode === "ibm") {
     return (
-      <div className="container">
-        <div className="card" style={{ maxWidth: 400, marginTop: "3rem" }}>
+      <CenterWrapper>
+        <div className="card" style={{ maxWidth: 400, width: "100%" }}>
           <h1 style={{ marginTop: 0 }}>IBM w3 SSO</h1>
           <p style={{ color: "var(--muted)", marginBottom: "1.5rem" }}>
-            You will be redirected to the company login page to sign in with your w3 credentials.
+            You will be redirected to the company login page.
           </p>
+
           {error && <div className="alert alert-error">{error}</div>}
+
           <button
             type="button"
             className="btn btn-primary"
@@ -97,24 +118,35 @@ export default function Login() {
           >
             Continue with w3 SSO
           </button>
-          <button type="button" className="btn" style={{ width: "100%" }} onClick={() => { setMode("choose"); setError(""); }}>
+
+          <button
+            type="button"
+            className="btn"
+            style={{ width: "100%" }}
+            onClick={() => {
+              setMode("choose");
+              setError("");
+            }}
+          >
             Back
           </button>
         </div>
-      </div>
+      </CenterWrapper>
     );
   }
 
-  // mode === "demo"
+  // demo mode
   return (
-    <div className="container">
-      <div className="card" style={{ maxWidth: 400, marginTop: "3rem" }}>
+    <CenterWrapper>
+      <div className="card" style={{ maxWidth: 400, width: "100%" }}>
         <h1 style={{ marginTop: 0 }}>Demo user</h1>
         <p style={{ color: "var(--muted)", marginBottom: "1.5rem" }}>
           Sign in with any email and name for local testing.
         </p>
+
         <form onSubmit={handleDemoSubmit}>
           {error && <div className="alert alert-error">{error}</div>}
+
           <div className="form-group">
             <label htmlFor="email">Email</label>
             <input
@@ -122,11 +154,11 @@ export default function Login() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@company.com"
               required
               autoComplete="email"
             />
           </div>
+
           <div className="form-group">
             <label htmlFor="name">Full Name</label>
             <input
@@ -134,19 +166,33 @@ export default function Login() {
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Your name"
               required
               autoComplete="name"
             />
           </div>
-          <button type="submit" className="btn btn-primary" disabled={loading} style={{ width: "100%", marginBottom: "0.5rem" }}>
+
+          <button
+            type="submit"
+            className="btn btn-primary"
+            disabled={loading}
+            style={{ width: "100%", marginBottom: "0.5rem" }}
+          >
             {loading ? "Signing in…" : "Sign in"}
           </button>
-          <button type="button" className="btn" style={{ width: "100%" }} onClick={() => { setMode("choose"); setError(""); }}>
+
+          <button
+            type="button"
+            className="btn"
+            style={{ width: "100%" }}
+            onClick={() => {
+              setMode("choose");
+              setError("");
+            }}
+          >
             Back
           </button>
         </form>
       </div>
-    </div>
+    </CenterWrapper>
   );
 }
