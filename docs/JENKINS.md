@@ -4,11 +4,8 @@ This project includes a **Jenkinsfile** for CI: install dependencies, build serv
 
 ## Prerequisites
 
-- **Docker** on the Jenkins agent (recommended): the pipeline runs inside a `node:18` container, so Node/npm are always available.
-- **Plugins:** "Docker Pipeline" (Pipeline: Docker) so Jenkins can run `agent { docker { ... } }`.
+- **Node.js 18+** and **npm** must be available to Jenkins (see [Making Node available on Mac](#making-node-available-on-mac) below).
 - No MongoDB needed for tests (Jest uses `mongodb-memory-server`).
-
-If you cannot use Docker, see [No Docker](#no-docker) below.
 
 ## Creating the Jenkins job
 
@@ -34,20 +31,44 @@ If you cannot use Docker, see [No Docker](#no-docker) below.
 
 After a successful run, the **Server Coverage Report** is published as an HTML report (if the HTML Publisher plugin is installed).
 
-## No Docker
+## Making Node available on Mac
 
-If Docker is not available, run the pipeline on a bare agent that has Node 18+ and npm in `PATH`:
+Jenkins often runs without your shell profile, so `node` and `npm` may not be in PATH. Use one of these:
 
-1. In **Jenkinsfile**, replace the `agent` block with:
-   ```groovy
-   agent any
-   ```
-2. On the Jenkins agent (e.g. your Mac), ensure Node/npm are on the **PATH for the user that runs Jenkins**. If you use nvm or Homebrew, Jenkins may not load your shell profile—either install Node globally (e.g. `/usr/local`) or in the Jenkins job add an "Execute shell" build step that runs `source ~/.nvm/nvm.sh` (or similar) before the pipeline runs, or set **PATH** in the job's environment.
+### Option A: Set PATH in the Jenkins job (quick)
+
+1. In Terminal, run: `which node` and `which npm`. You’ll get something like `/Users/sushil/.nvm/versions/node/v18.x.x/bin/node`.
+2. In Jenkins: open your **Pipeline job** → **Configure**.
+3. Under **Pipeline**, in **Pipeline script from SCM**, you can’t set env there. So use **Build Environment** (if available) to add **PATH** = `$HOME/.nvm/versions/node/v18.19.0/bin:/usr/bin:/bin` (use the directory from step 1).
+4. Or add a first stage in the Jenkinsfile that sets PATH (see Option C).
+
+### Option B: Install Node so Jenkins can see it (recommended)
+
+Install Node in a place that’s on the default PATH for the user that runs Jenkins:
+
+- **From nodejs.org:** download the macOS installer and install. Node goes to `/usr/local/bin`, which is usually in PATH.
+- **Homebrew:** run `brew install node`. Then ensure Jenkins is started from a shell that has `/opt/homebrew/bin` (or `/usr/local/bin`) in PATH.
+
+Restart Jenkins after installing, then run the pipeline again.
+
+### Option C: Set PATH in the Jenkinsfile
+
+If you use nvm, add this at the top of the pipeline (after `agent any`) so the first stages run with Node in PATH:
+
+```groovy
+environment {
+  NODE_ENV = 'test'
+  // Adjust path to match your nvm node version:
+  PATH = "/Users/sushil/.nvm/versions/node/v18.19.0/bin:${env.PATH}"
+}
+```
+
+Replace the path with the output of `dirname $(which node)` on your Mac.
 
 ## Troubleshooting
 
 - **"npm: command not found"**  
-  The pipeline uses a Docker agent (`node:18`) by default—install Docker and the "Docker Pipeline" plugin. Or switch to `agent any` and ensure Node 18+ and npm are in PATH for the user running Jenkins (see [No Docker](#no-docker)).
+  Jenkins doesn’t see Node/npm. Use [Making Node available on Mac](#making-node-available-on-mac) above.
 
 - **Tests fail with timeout**  
   In-memory MongoDB can be slow on first start; the pipeline timeout is 15 minutes. Increase in the Jenkinsfile if needed.

@@ -1,13 +1,8 @@
 // Jenkins pipeline for Cafeteria Seat Reservation
-// Uses Docker agent (node:18) so Node/npm are always available. Requires Docker and "Docker Pipeline" plugin.
+// Requires Node.js 18+ and npm on the agent (see docs/JENKINS.md for making Node available on Mac).
 
 pipeline {
-  agent {
-    docker {
-      image 'node:18'
-      reuseNode true
-    }
-  }
+  agent any
 
   options {
     timeout(time: 15, unit: 'MINUTES')
@@ -16,6 +11,7 @@ pipeline {
 
   environment {
     NODE_ENV = 'test'
+    PATH = "/Users/sushil/.nvm/versions/node/v24.13.0/bin:${env.PATH}"
   }
 
   stages {
