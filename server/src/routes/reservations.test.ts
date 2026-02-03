@@ -1,7 +1,10 @@
 import request from "supertest";
+import jwt from "jsonwebtoken";
 import app from "../index.js";
 import { prisma } from "../lib/prisma.js";
-import { mockSsoLogin } from "../services/authService.js";
+import { LOCATION } from "../config/constants.js";
+
+const JWT_SECRET = process.env.JWT_SECRET ?? "dev-secret";
 
 describe("Reservations API", () => {
   let token: string;
@@ -9,13 +12,34 @@ describe("Reservations API", () => {
   const timeSlot = "09:00";
 
   beforeAll(async () => {
-    const login = await mockSsoLogin("api-res@test.com", "API Res");
-    token = login.token;
+    // Create employee with manager so we don't call real IBM Unified Profile API
+    const manager = await prisma.manager.upsert({
+      where: { uid: "reservations-test-mgr" },
+      update: {},
+      create: { uid: "reservations-test-mgr", name: "Test Manager", bluDollars: 100 },
+    });
+    const employee = await prisma.employee.upsert({
+      where: { w3Id: "mock-w3-api-res@test.com" },
+      update: { managerId: manager.id },
+      create: {
+        w3Id: "mock-w3-api-res@test.com",
+        email: "api-res@test.com",
+        name: "API Res",
+        location: LOCATION,
+        managerId: manager.id,
+      },
+    });
+    token = jwt.sign(
+      { employeeId: employee.id, w3Id: employee.w3Id },
+      JWT_SECRET,
+      { expiresIn: "7d" }
+    );
   });
 
   afterAll(async () => {
     await prisma.reservation.deleteMany({ where: { date, timeSlot } });
     await prisma.employee.deleteMany({ where: { email: "api-res@test.com" } });
+    await prisma.manager.deleteMany({ where: { uid: "reservations-test-mgr" } });
     await prisma.$disconnect();
   });
 
@@ -42,11 +66,12 @@ describe("Reservations API", () => {
       .set("Authorization", `Bearer ${token}`)
       .send({ date, timeSlot, numberOfPeople: 2 })
       .expect(201);
-    expect(res.body.id).toBeDefined();
-    expect(res.body.date).toBe(date);
-    expect(res.body.timeSlot).toBe(timeSlot);
-    expect(Array.isArray(res.body.seatNumbers)).toBe(true);
-    expect(res.body.seatNumbers).toHaveLength(2);
+    const reservation = res.body.reservation ?? res.body;
+    expect(reservation.id).toBeDefined();
+    expect(reservation.date).toBe(date);
+    expect(reservation.timeSlot).toBe(timeSlot);
+    expect(Array.isArray(reservation.seatNumbers)).toBe(true);
+    expect(reservation.seatNumbers).toHaveLength(2);
   });
 
   it("POST /api/reservations same date+slot again returns 400", async () => {

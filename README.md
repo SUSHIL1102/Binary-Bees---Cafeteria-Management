@@ -74,6 +74,10 @@ npm run test
 
 Tests use an **in-memory MongoDB replica set** (via `mongodb-memory-server`), so you don't need a real MongoDB running for tests. No extra setup required.
 
+### CI / Jenkins
+
+A **Jenkinsfile** is included for pipeline CI: install → build (server + client) → run server tests. See **[docs/JENKINS.md](docs/JENKINS.md)** for how to create the Jenkins job and point it at this repo.
+
 ## Project structure
 
 ```

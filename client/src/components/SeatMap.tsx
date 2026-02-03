@@ -11,14 +11,16 @@ const LAYOUT_ROWS = 5;
 
 type SeatStatus = "available" | "taken" | "selected";
 
+type DummyKind = "coffee" | "salad" | "condiments" | "trash" | "utensils";
+
 type LayoutCell =
   | { type: "table"; tableIndex: number }
-  | { type: "dummy"; label: string; kind: "coffee" | "salad" | "condiments" | "trash" | "utensils" };
+  | { type: "dummy"; label: string; kind: DummyKind };
 
 const LAYOUT: LayoutCell[][] = (() => {
   const grid: LayoutCell[][] = [];
   let tableIndex = 0;
-  const dummies: { r: number; c: number; label: string; kind: LayoutCell["type"] extends "dummy" ? LayoutCell["kind"] : never }[] = [
+  const dummies: { r: number; c: number; label: string; kind: DummyKind }[] = [
     { r: 0, c: 2, label: "Coffee & drinks", kind: "coffee" },
     { r: 1, c: 5, label: "Salad bar", kind: "salad" },
     { r: 2, c: 1, label: "Condiments", kind: "condiments" },

@@ -9,3 +9,4 @@ coverage/
 *.log
 .vite/
 .test-mongo-uri
+*.tsbuildinfo

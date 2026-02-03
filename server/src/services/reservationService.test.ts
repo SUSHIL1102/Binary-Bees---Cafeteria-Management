@@ -19,11 +19,26 @@ describe("reservationService", () => {
   let employeeId2: string;
 
   beforeAll(async () => {
+    const manager = await prisma.manager.create({
+      data: { uid: "reservation-service-test-mgr", name: "Test Manager", bluDollars: 1000 },
+    });
     const e1 = await prisma.employee.create({
-      data: { w3Id: "w3-test-1", email: "a@test.com", name: "Alice", location: "Bangalore" },
+      data: {
+        w3Id: "w3-test-1",
+        email: "a@test.com",
+        name: "Alice",
+        location: "Bangalore",
+        managerId: manager.id,
+      },
     });
     const e2 = await prisma.employee.create({
-      data: { w3Id: "w3-test-2", email: "b@test.com", name: "Bob", location: "Bangalore" },
+      data: {
+        w3Id: "w3-test-2",
+        email: "b@test.com",
+        name: "Bob",
+        location: "Bangalore",
+        managerId: manager.id,
+      },
     });
     employeeId1 = e1.id;
     employeeId2 = e2.id;
@@ -32,6 +47,7 @@ describe("reservationService", () => {
   afterAll(async () => {
     await prisma.reservation.deleteMany({});
     await prisma.employee.deleteMany({ where: { w3Id: { startsWith: "w3-test-" } } });
+    await prisma.manager.deleteMany({ where: { uid: "reservation-service-test-mgr" } });
     await prisma.$disconnect();
   });
 
@@ -138,7 +154,7 @@ describe("reservationService", () => {
   });
 
   describe("cancelReservation", () => {
-    it("deletes own reservation and returns true", async () => {
+    it("deletes own reservation and returns refund object", async () => {
       const created = await createReservation(employeeId1, testDate, testSlot, 1);
       if (!created.success) throw new Error("create failed");
       const res = await prisma.reservation.findFirst({
@@ -146,11 +162,12 @@ describe("reservationService", () => {
       });
       expect(res).not.toBeNull();
       const cancelled = await cancelReservation(employeeId1, res!.id);
-      expect(cancelled).toBe(true);
+      expect(cancelled).not.toBeNull();
+      expect(cancelled).toEqual(expect.objectContaining({ type: "credit", amount: 5 }));
       const after = await getEmployeeReservationForDateAndSlot(employeeId1, testDate, testSlot);
       expect(after).toBeNull();
     });
-    it("returns false when reservation belongs to another employee", async () => {
+    it("returns null when reservation belongs to another employee", async () => {
       const created = await createReservation(employeeId1, testDate, testSlot, 1);
       if (!created.success) throw new Error("create failed");
       const res = await prisma.reservation.findFirst({
@@ -158,7 +175,7 @@ describe("reservationService", () => {
       });
       expect(res).not.toBeNull();
       const cancelled = await cancelReservation(employeeId2, res!.id);
-      expect(cancelled).toBe(false);
+      expect(cancelled).toBeNull();
     });
   });
 });
