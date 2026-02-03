@@ -49,17 +49,6 @@ pipeline {
           sh 'npm run test'
         }
       }
-      post {
-        always {
-          publishHTML(target: [
-            allowMissing: true,
-            alwaysLinkToLastBuild: true,
-            reportDir: 'server/coverage/lcov-report',
-            reportFiles: 'index.html',
-            reportName: 'Server Coverage Report'
-          ])
-        }
-      }
     }
   }
 
