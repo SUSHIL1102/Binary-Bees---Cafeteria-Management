@@ -2,10 +2,13 @@
 
 This project includes a **Jenkinsfile** for CI: install dependencies, build server and client, and run server tests. Tests use an in-memory MongoDB (no external DB required on the agent).
 
-## Prerequisites on the Jenkins agent
+## Prerequisites
 
-- **Node.js 18+** and **npm** (or use a Docker agent with `node:18`)
-- No MongoDB needed for tests (Jest uses `mongodb-memory-server`)
+- **Docker** on the Jenkins agent (recommended): the pipeline runs inside a `node:18` container, so Node/npm are always available.
+- **Plugins:** "Docker Pipeline" (Pipeline: Docker) so Jenkins can run `agent { docker { ... } }`.
+- No MongoDB needed for tests (Jest uses `mongodb-memory-server`).
+
+If you cannot use Docker, see [No Docker](#no-docker) below.
 
 ## Creating the Jenkins job
 
@@ -31,28 +34,20 @@ This project includes a **Jenkinsfile** for CI: install dependencies, build serv
 
 After a successful run, the **Server Coverage Report** is published as an HTML report (if the HTML Publisher plugin is installed).
 
-## Optional: run with Docker agent
+## No Docker
 
-If your Jenkins has the Docker Pipeline plugin and you prefer a containerized run:
+If Docker is not available, run the pipeline on a bare agent that has Node 18+ and npm in `PATH`:
 
-1. Edit the **Jenkinsfile** and change the first line to use a Docker agent:
-
+1. In **Jenkinsfile**, replace the `agent` block with:
    ```groovy
-   pipeline {
-     agent {
-       docker {
-         image 'node:18'
-         reuseNode true
-       }
-     }
+   agent any
    ```
-
-2. The rest of the pipeline stays the same; Node 18 and npm are provided by the image.
+2. On the Jenkins agent (e.g. your Mac), ensure Node/npm are on the **PATH for the user that runs Jenkins**. If you use nvm or Homebrew, Jenkins may not load your shell profile—either install Node globally (e.g. `/usr/local`) or in the Jenkins job add an "Execute shell" build step that runs `source ~/.nvm/nvm.sh` (or similar) before the pipeline runs, or set **PATH** in the job's environment.
 
 ## Troubleshooting
 
 - **"npm: command not found"**  
-  Install Node.js on the agent or use a Docker agent with a Node image.
+  The pipeline uses a Docker agent (`node:18`) by default—install Docker and the "Docker Pipeline" plugin. Or switch to `agent any` and ensure Node 18+ and npm are in PATH for the user running Jenkins (see [No Docker](#no-docker)).
 
 - **Tests fail with timeout**  
   In-memory MongoDB can be slow on first start; the pipeline timeout is 15 minutes. Increase in the Jenkinsfile if needed.
